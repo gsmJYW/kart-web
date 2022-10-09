@@ -30,30 +30,30 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <div id="g_id_onload" data-client_id="959430340466-chmrpk7djv0ol4dbq552b2kob5nk6va1.apps.googleusercontent.com" data-callback="handleCredentialResponse">
+    <div id="g_id_onload" data-client_id="959430340466-chmrpk7djv0ol4dbq552b2kob5nk6va1.apps.googleusercontent.com"
+        data-auto_select="true" data-callback="handleCredentialResponse">
 
     </div>
     <div id='signin-div' class="d-flex">
-        <div class="g_id_signin" data-type="standard"></div>
+        <div class="g_id_signin"
+            data-client_id="959430340466-chmrpk7djv0ol4dbq552b2kob5nk6va1.apps.googleusercontent.com"
+            data-callback="handleCredentialResponse" data-type="standard">
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.38/dist/sweetalert2.all.min.js"></script>
     <script src="/scripts/track_select.js"></script>
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js'
-        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithCredential, signOut } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js"
+    <script>
+        function handleCredentialResponse(response) {
+            const responsePayload = JSON.parse(atob(response.credential.split('.')[1]));
 
-        initializeApp({
-            apiKey: "AIzaSyDevqbIK-lcqYdqbmfBAWGPrSHlJT7F0FQ",
-            authDomain: "store-manager-5d527.firebaseapp.com",
-            projectId: "store-manager-5d527",
-            storageBucket: "store-manager-5d527.appspot.com",
-            messagingSenderId: "36522862962",
-            appId: "1:36522862962:web:8a9e9b88373a19add095eb",
-            measurementId: "G-37DECVWLYX"
-        })
-
-        const auth = getAuth()
+            console.log("ID: " + responsePayload.sub);
+            console.log('Full Name: ' + responsePayload.name);
+            console.log('Given Name: ' + responsePayload.given_name);
+            console.log('Family Name: ' + responsePayload.family_name);
+            console.log("Image URL: " + responsePayload.picture);
+            console.log("Email: " + responsePayload.email);
+        }
     </script>
 </body>
 
