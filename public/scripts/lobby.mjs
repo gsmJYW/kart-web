@@ -41,6 +41,11 @@ else {
     await signinAlert()
 }
 
+document.querySelector('#signout').addEventListener('click', () => {
+    document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    location.reload()
+})
+
 for (const random of document.querySelectorAll('.random-list > img')) {
     random.addEventListener('click', async (e) => {
         const randomType = e.target.id
