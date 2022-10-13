@@ -14,6 +14,7 @@
     bottom: 0;
     min-width: 100%;
     min-height: 100%;
+    z-index: -1;
 }
 
 div.bg {
@@ -23,4 +24,22 @@ div.bg {
 #signin-div {
     float: right;
     margin: 15px;
+}
+
+.button{
+    padding: 10px 20px 10px 20px;
+    border:none;
+    outline:none;
+    box-shadow:-5px 5px 5px 0 #8aa7fb;
+    color:#fff;
+    font-size: 1vmax;
+    text-shadow:0 1px rgba(0,0,0,0.4);
+    background-color:#5882FA;
+    border-radius:3px;
+    font-weight:700;
+}
+
+.button:hover{
+    background-color:#2E64FE;
+    cursor:pointer;
 }
