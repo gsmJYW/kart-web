@@ -13,6 +13,34 @@ function postAsync(url, params = {}) {
     })
 }
 
+async function signinAlert() {
+    await Swal.fire({
+        icon: 'success',
+        title: '환영합니다',
+        html: '서비스를 이용하기 위해 Discord 로그인이 필요합니다.<br>원치 않으실 경우 사이트를 닫아주세요.',
+        allowOutsideClick: false,
+        confirmButtonText: '확인',
+    })
+
+    window.location = `https://discord.com/api/oauth2/authorize?client_id=1029472862765056010&redirect_uri=${document.URL}discord/oauth&response_type=code&scope=identify`
+}
+
+const cookie = Object.fromEntries(document.cookie.split(/; */).map(cookie => cookie.split('=', 2)))
+let user
+
+if (cookie.access_token) {
+    const res = await postAsync('/discord/user', { access_token: cookie.access_token })
+
+    if (res.result != 'OK') {
+        await signinAlert()
+    }
+
+    user = res.user
+}
+else {
+    await signinAlert()
+}
+
 for (const random of document.querySelectorAll('.random-list > img')) {
     random.addEventListener('click', async (e) => {
         const randomType = e.target.id
