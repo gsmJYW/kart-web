@@ -29,32 +29,14 @@
         <img id="crazy" class="col-3" src="/images/crazy.png" />
     </div>
 
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <div id="g_id_onload" data-client_id="959430340466-chmrpk7djv0ol4dbq552b2kob5nk6va1.apps.googleusercontent.com"
-        data-auto_select="true" data-callback="handleCredentialResponse">
-
-    </div>
-    <div id='signin-div' class="d-flex">
-        <div class="g_id_signin"
-            data-client_id="959430340466-chmrpk7djv0ol4dbq552b2kob5nk6va1.apps.googleusercontent.com"
-            data-callback="handleCredentialResponse" data-type="standard">
-        </div>
+    <div id="signin-div">
+        <a>
+            <button type="button" class="button">참여하기</button>
+        </a>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.38/dist/sweetalert2.all.min.js"></script>
-    <script src="/scripts/track_select.js"></script>
-    <script>
-        function handleCredentialResponse(response) {
-            const responsePayload = JSON.parse(atob(response.credential.split('.')[1]));
-
-            console.log("ID: " + responsePayload.sub);
-            console.log('Full Name: ' + responsePayload.name);
-            console.log('Given Name: ' + responsePayload.given_name);
-            console.log('Family Name: ' + responsePayload.family_name);
-            console.log("Image URL: " + responsePayload.picture);
-            console.log("Email: " + responsePayload.email);
-        }
-    </script>
+    <script type="module" src="/scripts/lobby.mjs"></script>
 </body>
 
 </html>
