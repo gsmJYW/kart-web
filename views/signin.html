@@ -1,0 +1,34 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카트웹</title>
+
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+</head>
+
+<body>
+    <video autoplay muted loop class="bg">
+        <source src="/videos/bg.mp4" type="video/mp4">
+    </video>
+    <div class="bg"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.38/dist/sweetalert2.all.min.js"></script>
+    <script type="module">
+        await Swal.fire({
+            icon: 'success',
+            title: '환영합니다',
+            html: '서비스를 이용하기 위해 Discord 로그인이 필요합니다.<br>원치 않으실 경우 사이트를 닫아주세요.',
+            allowOutsideClick: false,
+            confirmButtonText: '확인',
+        })
+
+        window.location = `https://discord.com/api/oauth2/authorize?client_id=1029472862765056010&redirect_uri=${document.URL}discord/oauth&response_type=code&scope=identify`
+    </script>
+</body>
+
+</html>
