@@ -12,6 +12,9 @@ import session from 'express-session'
 import mysqlSession from 'express-mysql-session'
 import fetch from 'node-fetch'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 const args = process.argv.slice(2)
 
 if (args.length < 6) {
@@ -36,16 +39,13 @@ const sessionStore = new mysqlStore(options)
 const app = express()
 
 app.use(bodyParser.json())
-app.use(express.static('public'))
+app.use(express.static(`${__dirname}/public`))
 app.use(session({
   secret: args[4],
   resave: false,
   saveUninitialized: true,
   store: sessionStore,
 }))
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 const key = fs.readFileSync(`${__dirname}/ssl/${fs.readdirSync(`${__dirname}/ssl`).find((file) => file.endsWith('.key.pem'))}`)
 const cert = fs.readFileSync(`${__dirname}/ssl/${fs.readdirSync(`${__dirname}/ssl`).find((file) => file.endsWith('.crt.pem'))}`)
