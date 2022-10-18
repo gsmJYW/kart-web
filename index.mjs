@@ -47,8 +47,8 @@ app.use(session({
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const key = fs.readFileSync(`${__dirname}/ssl/${fs.readdirSync('ssl').find((file) => file.endsWith('.key.pem'))}`)
-const cert = fs.readFileSync(`${__dirname}/ssl/${fs.readdirSync('ssl').find((file) => file.endsWith('.crt.pem'))}`)
+const key = fs.readFileSync(`${__dirname}/ssl/${fs.readdirSync(`${__dirname}/ssl`).find((file) => file.endsWith('.key.pem'))}`)
+const cert = fs.readFileSync(`${__dirname}/ssl/${fs.readdirSync(`${__dirname}/ssl`).find((file) => file.endsWith('.crt.pem'))}`)
 
 http.createServer(app).listen(80)
 https.createServer({ key: key, cert: cert }, app).listen(443)
