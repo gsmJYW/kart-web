@@ -28,7 +28,6 @@ const options = {
 }
 
 const pool = mysql.createPool(options)
-await pool.query(`ALTER USER '${args[1]}'@'localhost' IDENTIFIED WITH mysql_native_password BY '${args[2]}'`)
 await pool.query('DELETE FROM game WHERE closed_at IS NULL')
 
 const mysqlStore = mysqlSession(session)
