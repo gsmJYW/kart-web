@@ -73,11 +73,17 @@ function buildGameCard(gameId, mode, trackType, banpickAmount) {
     document.querySelector('#banpick-amount').textContent = banpickAmount
     document.querySelector('#game-card').hidden = false
     document.querySelector('#show-game-id').addEventListener('click', async () => {
-        await Swal.fire({
+        const res = await Swal.fire({
             title: `초대 코드`,
             html: gameId,
-            confirmButtonText: '확인',
+            showCancelButton: true,
+            confirmButtonText: '복사',
+            cancelButtonText: '닫기',
         })
+
+        if (res.isConfirmed) {
+            await navigator.clipboard.writeText(gameId)
+        }
     })
     document.querySelector('#close-game').addEventListener('click', async () => {
         try {
@@ -140,12 +146,13 @@ document.querySelector('#join').addEventListener('click', async () => {
         showCancelButton: true,
         confirmButtonText: '확인',
         cancelButtonText: '취소',
+        allowOutsideClick: false,
     })
 
     if (res.isConfirmed) {
         const gameId = res.value.trim()
 
-        if (/[^A-Za-z0-9]/g.test(gameId) || gameId.length != 6) {
+        if (/[^a-z0-9]/g.test(gameId) || gameId.length != 6) {
             await Swal.fire({
                 icon: 'warning',
                 html: '초대 코드에 잘못된 문자가 들어갔거나 6자가 아닙니다.',
@@ -265,14 +272,21 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                     throw new Error(res.error)
                 }
 
-                buildGameCard(res.game_id, mode, trackType, banpickAmount)
+                const gameId = res.game_id
+                buildGameCard(gameId, mode, trackType, banpickAmount)
 
-                await Swal.fire({
+                res = await Swal.fire({
                     title: `게임 생성 완료`,
                     icon: 'success',
-                    html: `초대 코드: <strong>${res.game_id}</strong> <br> 사이트에서 나가셔도 취소되지 않습니다.`,
-                    confirmButtonText: '확인',
+                    html: `사이트에서 나가셔도 대기방은 없어지지 않습니다. <br> 좌측 상단의 취소를 누르시기 전까지는 <br> 누군가 참가해 게임이 시작될 수 있습니다. <br><br> 초대 코드: <strong>${gameId}</strong>`,
+                    showCancelButton: true,
+                    confirmButtonText: '복사',
+                    cancelButtonText: '닫기'
                 })
+
+                if (res.isConfirmed) {
+                    await navigator.clipboard.writeText(gameId)
+                }
             }
             catch (error) {
                 await Swal.fire({
