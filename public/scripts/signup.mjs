@@ -13,7 +13,7 @@ const riderName = res.value
 
 if (res.isConfirmed) {
     try {
-        const res = await fetch('/register', {
+        const res = await fetch('/signup', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
