@@ -16,7 +16,7 @@
         <source src="/videos/bg.mp4" type="video/mp4">
     </video>
     <div class="bg"></div>
-    <div class="random-list row position-absolute top-50 start-50 translate-middle">
+    <div class="track-type-list row position-absolute top-50 start-50 translate-middle">
         <img id="very_easy" class="col-3" src="/images/very_easy.png" />
         <img id="easy" class="col-3" src="/images/easy.png" />
         <img id="normal" class="col-3" src="/images/normal.png" />
@@ -29,9 +29,18 @@
         <img id="crazy" class="col-3" src="/images/crazy.png" />
     </div>
 
-    <div id="signin-div">
-        <button id="join" type="button" class="btn btn-outline-light">참여하기</button>
+    <div id="top-right">
+        <button id="join" type="button" class=" btn btn-outline-light">참여하기</button>
         <button id="signout" type="button" class="btn btn-outline-light">로그아웃</button>
+    </div>
+
+    <div id="game-card" class="card" hidden="true">
+        <div class="card-body">
+            <p id="game-card-title"></h4>
+            <p id="game-card-subtitle">밴픽 트랙: <strong id="banpick-amount">0</strong></p>
+            <button id="show-game-id" type="button" class="btn btn-primary">초대 코드</button>
+            <button id="close-game" tyoe="button" class="btn btn-outline-primary">취소</button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.38/dist/sweetalert2.all.min.js"></script>
