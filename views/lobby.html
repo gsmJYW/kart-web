@@ -29,17 +29,25 @@
         <img id="crazy" class="col-3" src="/images/crazy.png" />
     </div>
 
-    <div id="top-right">
-        <button id="join" type="button" class=" btn btn-outline-light">참여하기</button>
-        <button id="signout" type="button" class="btn btn-outline-light">로그아웃</button>
+    <div class="top-right">
+        <button class="join btn btn-outline-light" type="button">참여하기</button>
+        <button class="signout btn btn-outline-light" type="button">로그아웃</button>
     </div>
 
-    <div id="game-card" class="card" hidden="true">
+    <div class="game-waiting game-card card" hidden="true">
         <div class="card-body">
-            <p id="game-card-title"></h4>
-            <p id="game-card-subtitle">밴픽 트랙: <strong id="banpick-amount">0</strong></p>
-            <button id="show-game-id" type="button" class="btn btn-primary">초대 코드</button>
-            <button id="close-game" tyoe="button" class="btn btn-outline-primary">취소</button>
+            <p class="game-card-title"></p>
+            <p class="game-card-subtitle">밴픽 트랙: <strong class="banpick-amount">0</strong></p>
+            <button class="show-game-id btn btn-primary" type="button">초대 코드</button>
+            <button class="close-game btn btn-outline-primary" type="button">취소</button>
+        </div>
+    </div>
+
+    <div class="game-started game-card card" hidden="true">
+        <div class="card-body">
+            <p class="game-card-title">
+            <p class="game-card-subtitle"></p>
+            <button class="open-game btn btn-primary" type="button">열기</button>
         </div>
     </div>
 

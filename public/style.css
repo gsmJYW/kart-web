@@ -27,39 +27,39 @@ div.bg {
     background: rgba(0, 0, 0, 0.8);
 }
 
-#top-right {
+.top-right {
     float: right;
     margin: 15px;
 }
 
-#top-right>.btn {
+.top-right>.btn {
     padding: 1vmin 2.5vmin !important;
     font-size: 1.5vmin !important;
     border-radius: 0 !important;
 }
 
-#game-card {
+.game-card {
     float: left;
     margin: 15px;
 }
 
-#game-card-title {
+.game-card-title {
     font-size: 1.7vmin;
     margin: 0px;
 }
 
-#game-card-subtitle {
+.game-card-subtitle {
     font-size: 1.4vmin;
 }
 
-#game-card > div > button {
+.game-card > div > button {
     font-size: 1.4vmin;
 }
 
-#game-card > div > button {
-    font-size: 1.4vmin;
-}
-
-#game-card > div > button:first-of-type {
+.show-game-id {
     margin-left: 6vmin;
+}
+
+.open-game {
+    margin-left: 14vmin;
 }
