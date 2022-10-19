@@ -364,7 +364,7 @@ app.post('/game/join', async (req, res) => {
     req.session.player_id = req.session.user_id
     req.session.save()
 
-    await pool.query(`UPDATE game SET opponent_id = ${userId} WHERE id = ${gameId}`)
+    await pool.query(`UPDATE game SET opponent_id = ${userId}, banpick_started_at = CURRENT_TIMESTAMP WHERE id = ${gameId}`)
 
     res.json({
       result: 'OK',
