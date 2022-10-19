@@ -1,3 +1,20 @@
+try {
+    const eventSource = new EventSource('/game/event')
+    eventSource.addEventListener('game_update', (e) => {
+        const game = JSON.parse(e.data)
+        buildGameCard(game)
+    })
+}
+catch (error) {
+    await Swal.fire({
+        icon: 'error',
+        html: error.message,
+        confirmButtonText: '새로고침',
+    })
+
+    location.reload()
+}
+
 function postAsync(url, params = {}) {
     return new Promise((resolve, reject) => {
         fetch(url, {
@@ -12,10 +29,10 @@ function postAsync(url, params = {}) {
     })
 }
 
-function buildGameCard(gameId, mode, trackType, banpickAmount) {
+function buildGameCard(game) {
     let title
 
-    switch (mode) {
+    switch (game.mode) {
         case 'speed':
             title = '스피드'
             break
@@ -27,7 +44,7 @@ function buildGameCard(gameId, mode, trackType, banpickAmount) {
 
     title += ' / '
 
-    switch (trackType) {
+    switch (game.track_type) {
         case 'very_easy':
             title += 'Very Easy 랜덤'
             break
@@ -69,62 +86,68 @@ function buildGameCard(gameId, mode, trackType, banpickAmount) {
             break
     }
 
-    document.querySelector('#game-card-title').textContent = title
-    document.querySelector('#banpick-amount').textContent = banpickAmount
-    document.querySelector('#game-card').hidden = false
-    document.querySelector('#show-game-id').addEventListener('click', async () => {
-        const res = await Swal.fire({
-            title: `초대 코드`,
-            html: gameId,
-            showCancelButton: true,
-            confirmButtonText: '복사',
-            cancelButtonText: '닫기',
+    const gameStarted = document.querySelector('.game-started')
+    const gameWaiting = document.querySelector('.game-waiting')
+
+    if (game.opponent_id) {
+        gameStarted.hidden = false
+        gameWaiting.hidden = true
+
+        let subtitle = '밴픽 진행 중'
+
+        if (game.game_started_at) {
+            subtitle = '게임 진행 중'
+        }
+
+        document.querySelector('.game-started > div > .game-card-subtitle').textContent = subtitle
+        document.querySelector('.open-game').addEventListener('click', () => {
+            window.location.href = '/banpick'
         })
+    }
+    else {
+        gameStarted.hidden = true
+        gameWaiting.hidden = false
 
-        if (res.isConfirmed) {
-            await navigator.clipboard.writeText(gameId)
-        }
-    })
-    document.querySelector('#close-game').addEventListener('click', async () => {
-        try {
-            const res = await postAsync('/game/close')
-
-            if (res.result == 'error') {
-                throw new Error(res.error)
-            }
-
-            document.querySelector('#game-card').hidden = true
-        }
-        catch (error) {
-            await Swal.fire({
-                icon: 'warning',
-                html: error.message,
-                confirmButtonText: '확인',
+        document.querySelector('.banpick-amount').textContent = game.banpick_amount
+        document.querySelector('.show-game-id').addEventListener('click', async () => {
+            const res = await Swal.fire({
+                title: `초대 코드`,
+                html: game.id,
+                showCancelButton: true,
+                confirmButtonText: '복사',
+                cancelButtonText: '닫기',
             })
-        }
-    })
-}
 
-try {
-    const res = await postAsync('/game')
+            if (res.isConfirmed) {
+                await navigator.clipboard.writeText(game.id)
+            }
+        })
+        document.querySelector('.close-game').addEventListener('click', async () => {
+            try {
+                const res = await postAsync('/game/close')
 
-    if (res.result == 'error') {
-        throw new Error(res.error)
+                if (res.result == 'error') {
+                    throw new Error(res.error)
+                }
+
+                document.querySelector('.game-card').hidden = true
+            }
+            catch (error) {
+                await Swal.fire({
+                    icon: 'warning',
+                    html: error.message,
+                    confirmButtonText: '확인',
+                })
+            }
+        })
     }
 
-    if (res.game.id) {
-        buildGameCard(res.game.id, res.game.mode, res.game.track_type, res.game.banpick_amount)
+    for (const gameCardTitle of document.querySelectorAll('.game-card-title')) {
+        gameCardTitle.textContent = title
     }
-}
-catch (error) {
-    await Swal.fire({
-        icon: 'warning',
-        html: error.message,
-        confirmButtonText: '확인',
-    })
-}
+} 
 
-document.querySelector('#signout').addEventListener('click', async () => {
+document.querySelector('.signout').addEventListener('click', async () => {
     const res = await Swal.fire({
         icon: 'warning',
         html: '로그아웃 하여도 대기 중이거나 <br> 진행 중인 게임은 취소되지 않습니다.',
@@ -139,7 +162,7 @@ document.querySelector('#signout').addEventListener('click', async () => {
     }
 })
 
-document.querySelector('#join').addEventListener('click', async () => {
+document.querySelector('.join').addEventListener('click', async () => {
     const res = await Swal.fire({
         title: '초대 코드 입력',
         input: 'text',
@@ -273,7 +296,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 }
 
                 const gameId = res.game_id
-                buildGameCard(gameId, mode, trackType, banpickAmount)
 
                 res = await Swal.fire({
                     title: `게임 생성 완료`,
