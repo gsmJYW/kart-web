@@ -4,6 +4,7 @@ import { dirname } from 'path'
 import fs from 'fs'
 import http from 'http'
 import https from 'https'
+import requestID from 'express-request-id'
 import bodyParser from 'body-parser'
 import mysql from 'mysql2/promise'
 import DiscordOauth2 from 'discord-oauth2'
@@ -38,6 +39,7 @@ const sessionStore = new mysqlStore(options)
 
 const app = express()
 
+app.use(requestID())
 app.use(bodyParser.json())
 app.use(express.static(`${__dirname}/public`))
 app.use(session({
@@ -212,7 +214,7 @@ app.post('/tracks', async (req, res) => {
   }
 })
 
-function getTrackList(mode, trackType) {
+function getTrackList(mode, trackType, amount = NaN) {
   return new Promise(async (resolve, reject) => {
     if (!mode || !trackType) {
       reject(new Error('parameters required'))
@@ -247,7 +249,13 @@ function getTrackList(mode, trackType) {
     }
 
     try {
-      const result = await pool.query(`SELECT * FROM track WHERE ${conditionList.join(' AND ')}`)
+      let query = `SELECT * FROM track WHERE ${conditionList.join(' AND ')}`
+
+      if (amount) {
+        query += ` ORDER BY RAND() LIMIT ${amount}`
+      }
+
+      const result = await pool.query(query)
       resolve(result[0])
     }
     catch (error) {
@@ -255,6 +263,71 @@ function getTrackList(mode, trackType) {
     }
   })
 }
+
+app.get('/game', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('not authorized')
+    }
+
+    const userId = decrypt(req.session.user_id)
+    const result = await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND banpick_started_at IS NOT NULL AND closed_at IS NULL`)
+
+    if (!result[0][0]) {
+      throw new Error()
+    }
+
+
+  }
+  catch (error) {
+    res.redirect('/')
+  }
+})
+
+let gameEventList = []
+
+app.get('/game/event', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('not authorized')
+    }
+
+    const userId = decrypt(req.session.user_id)
+    const result = await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`)
+    const game = result[0][0]
+
+    const gameEvent = {
+      id: req.id,
+      userId: userId,
+      res: res,
+    }
+
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    })
+
+    res.flushHeaders()
+
+    if (game) {
+      res.write(`event: game_update\ndata: ${JSON.stringify(game)}\n\n`)
+    }
+
+    gameEventList.push(gameEvent)
+
+    res.on('close', () => {
+      gameEventList = gameEventList.filter((gameEvent) => gameEvent.id != req.id)
+      res.end()
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      error: error.message,
+    })
+  }
+})
 
 app.post('/game', async (req, res) => {
   try {
@@ -292,13 +365,7 @@ app.post('/game/create', async (req, res) => {
       throw new Error(`banpick amount can't be less than 9 or more than track amount`)
     }
 
-    const conditionList = [`'${userId}' IN (host_id, opponent_id)`]
-
-    if (req.session.player_id) {
-      conditionList.push(`'${decrypt(req.session.player_id)}' IN (host_id, opponent_id)`)
-    }
-
-    let result = await pool.query(`SELECT * FROM game WHERE (${conditionList.join(' OR ')}) AND closed_at IS NULL`)
+    let result = await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`)
 
     if (result[0][0]) {
       throw new Error('이미 진행 중이신 게임이 있습니다.')
@@ -307,12 +374,18 @@ app.post('/game/create', async (req, res) => {
     result[0].affectedRows = 0
     let gameId
 
-    req.session.player_id = req.session.user_id
-    req.session.save()
-
     while (result[0].affectedRows == 0) {
       gameId = Crypto.randomUUID().slice(0, 6)
       result = await pool.query(`INSERT IGNORE INTO game (id, host_id, host_rider_id, mode, track_type, banpick_amount) VALUES ('${gameId}', '${userId}', (SELECT rider_id FROM user WHERE id = '${userId}'), '${mode}', '${trackType}', ${banpickAmount})`)
+    }
+
+    for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.userId == userId)) {
+      gameEvent.res.write(`event: game_update\ndata: ${JSON.stringify({
+        id: gameId,
+        mode: mode,
+        track_type: trackType,
+        banpick_amount: banpickAmount,
+      })}\n\n`)
     }
 
     res.json({
@@ -333,13 +406,7 @@ app.post('/game/join', async (req, res) => {
     const gameId = req.body.game_id
     const userId = decrypt(req.session.user_id)
 
-    const conditionList = [`'${userId}' IN (host_id, opponent_id)`]
-
-    if (req.session.player_id) {
-      conditionList.push(`'${decrypt(req.session.player_id)}' IN (host_id, opponent_id)`)
-    }
-
-    let result = await pool.query(`SELECT * FROM game WHERE (${conditionList.join(' OR ')}) AND closed_at IS NULL`)
+    let result = await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`)
 
     if (result[0][0]) {
       throw new Error('이미 진행 중이신 게임이 있습니다.')
@@ -361,10 +428,25 @@ app.post('/game/join', async (req, res) => {
       throw new Error('호스트와 라이더명이 같습니다. <br> 라이더명을 변경해주세요.')
     }
 
+    const trackList = await getTrackList(game.mode, game.track_type, game.banpick_amount)
+    const valueList = [`('${game.id}', '${trackList.pop().name}', 1, true)`]
+
+    for (const track of trackList) {
+      valueList.push(`('${game.id}', '${track.name}', NULL, false)`)
+    }
+
+    await pool.query(`INSERT INTO banpick (game_id, track_name, \`order\`, picked) VALUES ${valueList.join(',')}`)
+
     req.session.player_id = req.session.user_id
     req.session.save()
 
-    await pool.query(`UPDATE game SET opponent_id = ${userId}, banpick_started_at = CURRENT_TIMESTAMP WHERE id = ${gameId}`)
+    await pool.query(`UPDATE game SET opponent_id = ${userId}, banpick_started_at = CURRENT_TIMESTAMP WHERE id = '${gameId}'`)
+
+    game.opponent_id = userId
+
+    for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.userId == userId || gameEvent.userId == game.host_id)) {
+      gameEvent.res.write(`event: game_update\ndata: ${JSON.stringify(game)}\n\n`)
+    }
 
     res.json({
       result: 'OK',
@@ -385,7 +467,7 @@ app.post('/game/close', async (req, res) => {
     }
 
     const userId = decrypt(req.session.user_id)
-    await pool.query(`DELETE FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`)
+    await pool.query(`DELETE FROM game WHERE '${userId}' IN (host_id, opponent_id) AND opponent_id IS NULL`)
 
     res.json({
       result: 'OK',
