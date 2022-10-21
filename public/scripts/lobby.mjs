@@ -1,8 +1,22 @@
 try {
     const eventSource = new EventSource('/game/event')
-    eventSource.addEventListener('game_update', (e) => {
+    eventSource.addEventListener('game_update', async (e) => {
         const game = JSON.parse(e.data)
         buildGameCard(game)
+
+        if (game.opponent_id) {
+            const res = await Swal.fire({
+                title: '게임 시작',
+                html: '밴픽이 진행 중입니다. <br> 이동 하시겠습니까?',
+                showCancelButton: true,
+                confirmButtonText: '확인',
+                cancelButtonText: '취소',
+            })
+
+            if (res.isConfirmed) {
+                location.href = '/banpick'
+            }
+        }
     })
 }
 catch (error) {
@@ -145,7 +159,7 @@ function buildGameCard(game) {
     for (const gameCardTitle of document.querySelectorAll('.game-card-title')) {
         gameCardTitle.textContent = title
     }
-} 
+}
 
 document.querySelector('.signout').addEventListener('click', async () => {
     const res = await Swal.fire({
@@ -208,7 +222,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
 
         if (trackType != 'crazy') {
             const res = await Swal.fire({
-                html: `<img src="/images/${trackType}.png" />`,
+                html: `<img src="/images/randoms/${trackType}.png" />`,
                 input: 'radio',
                 inputOptions: {
                     'item': '아이템전',
