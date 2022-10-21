@@ -185,6 +185,37 @@ app.get('/discord/oauth', async (req, res) => {
   }
 })
 
+app.post('/rider/name', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('not authorized')
+    }
+
+    const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/${req.body.rider_id}`, {
+      headers: {
+        Authorization: kartApiKey,
+      },
+    })
+
+    const rider = await result.json()
+
+    if (!rider.name) {
+      throw new Error('라이더를 찾지 못했습니다.')
+    }
+
+    res.json({
+      result: 'OK',
+      rider_name: rider.name,
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      error: error.message,
+    })
+  }
+})
+
 app.get('/signout', async (req, res) => {
   delete req.session.access_token
   delete req.session.user_id
@@ -214,57 +245,7 @@ app.post('/tracks', async (req, res) => {
   }
 })
 
-function getTrackList(mode, trackType, amount = NaN) {
-  return new Promise(async (resolve, reject) => {
-    if (!mode || !trackType) {
-      reject(new Error('parameters required'))
-    }
-
-    if (!['speed', 'item'].some((element) => mode == element)) {
-      reject(new Error('invalid mode'))
-    }
-
-    if (!['very_easy', 'easy', 'normal', 'hard', 'very_hard', 'all', 'league', 'new', 'reverse', 'crazy'].some((element) => trackType == element)) {
-      reject(new Error('invalid trackType'))
-    }
-
-    const conditionList = []
-
-    if (mode == 'speed') {
-      if (trackType == 'crazy') {
-        reject(new Error('speed mode is not available on crazy random'))
-      }
-
-      conditionList.push('crazy = false')
-    }
-    else {
-      conditionList.push('item = true')
-    }
-
-    if (['all', 'reverse', 'crazy'].some((element) => trackType == element) == 0) {
-      conditionList.push(`${mode}_${trackType} = true`)
-    }
-    else if (trackType != 'all') {
-      conditionList.push(`${trackType} = true`)
-    }
-
-    try {
-      let query = `SELECT * FROM track WHERE ${conditionList.join(' AND ')}`
-
-      if (amount) {
-        query += ` ORDER BY RAND() LIMIT ${amount}`
-      }
-
-      const result = await pool.query(query)
-      resolve(result[0])
-    }
-    catch (error) {
-      reject(new Error(error))
-    }
-  })
-}
-
-app.get('/game', async (req, res) => {
+app.get('/banpick', async (req, res) => {
   try {
     if (!req.session.access_token) {
       throw new Error('not authorized')
@@ -277,7 +258,7 @@ app.get('/game', async (req, res) => {
       throw new Error()
     }
 
-
+    res.sendFile(__dirname + '/views/banpick.html')
   }
   catch (error) {
     res.redirect('/')
@@ -302,6 +283,13 @@ app.get('/game/event', async (req, res) => {
       res: res,
     }
 
+    if (game) {
+      if (game.opponent_id) {
+        const result = await pool.query(`SELECT b.track_name, b.order, b.picked, b.banned, b.user_id FROM banpick as b INNER JOIN game as g WHERE '${decrypt(req.session.user_id)}' in (g.host_id, g.opponent_id) AND g.closed_at IS NULL`)
+        game.banpick = result[0]
+      }
+    }
+
     res.set({
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -319,29 +307,6 @@ app.get('/game/event', async (req, res) => {
     res.on('close', () => {
       gameEventList = gameEventList.filter((gameEvent) => gameEvent.id != req.id)
       res.end()
-    })
-  }
-  catch (error) {
-    res.json({
-      result: 'error',
-      error: error.message,
-    })
-  }
-})
-
-app.post('/game', async (req, res) => {
-  try {
-    if (!req.session.access_token) {
-      throw new Error('not authorized')
-    }
-
-    const userId = decrypt(req.session.user_id)
-    const result = await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`)
-    const game = result[0][0]
-
-    res.json({
-      result: 'OK',
-      game: game ? game : {},
     })
   }
   catch (error) {
@@ -423,24 +388,25 @@ app.post('/game/join', async (req, res) => {
     }
 
     result = await pool.query(`SELECT * FROM user WHERE id = ${userId}`)
+    const riderId = result[0][0].rider_id
 
-    if (game.host_rider_id == result[0][0].rider_id) {
+    if (game.host_rider_id ==riderId ) {
       throw new Error('호스트와 라이더명이 같습니다. <br> 라이더명을 변경해주세요.')
     }
 
     const trackList = await getTrackList(game.mode, game.track_type, game.banpick_amount)
-    const valueList = [`('${game.id}', '${trackList.pop().name}', 1, true)`]
+    const valueList = [`('${game.id}', '${trackList.pop().name}', 1, true, 1)`]
 
     for (const track of trackList) {
-      valueList.push(`('${game.id}', '${track.name}', NULL, false)`)
+      valueList.push(`('${game.id}', '${track.name}', NULL, false, NULL)`)
     }
 
-    await pool.query(`INSERT INTO banpick (game_id, track_name, \`order\`, picked) VALUES ${valueList.join(',')}`)
+    await pool.query(`INSERT INTO banpick (game_id, track_name, \`order\`, picked, round) VALUES ${valueList.join(',')}`)
 
     req.session.player_id = req.session.user_id
     req.session.save()
 
-    await pool.query(`UPDATE game SET opponent_id = ${userId}, banpick_started_at = CURRENT_TIMESTAMP WHERE id = '${gameId}'`)
+    await pool.query(`UPDATE game SET opponent_id = ${userId}, opponent_rider_id = ${riderId}, banpick_started_at = CURRENT_TIMESTAMP WHERE id = '${gameId}'`)
 
     game.opponent_id = userId
 
@@ -481,10 +447,85 @@ app.post('/game/close', async (req, res) => {
   }
 })
 
+app.post('/banpick/track', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('not authorized')
+    }
+
+    const result = await pool.query(`SELECT b.track_name, b.order, b.picked, b.banned, b.user_id FROM banpick as b INNER JOIN game as g WHERE '${decrypt(req.session.user_id)}' in (g.host_id, g.opponent_id) AND g.closed_at IS NULL`)
+
+    res.json({
+      result: 'OK',
+      banpick: result[0][0],
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      error: error.message,
+    })
+  }
+})
+
+app.get('/images/tracks/:track', async (req, res) => {
+  res.sendFile(`${__dirname}/images/tracks/${req.params.track}.png`)
+})
+
 function encrypt(str) {
   return Crypto.publicEncrypt(key, Buffer.from(str)).toString('base64')
 }
 
 function decrypt(str) {
   return Crypto.privateDecrypt(key, Buffer.from(str, 'base64')).toString()
+}
+
+function getTrackList(mode, trackType, amount = NaN) {
+  return new Promise(async (resolve, reject) => {
+    if (!mode || !trackType) {
+      reject(new Error('parameters required'))
+    }
+
+    if (!['speed', 'item'].some((element) => mode == element)) {
+      reject(new Error('invalid mode'))
+    }
+
+    if (!['very_easy', 'easy', 'normal', 'hard', 'very_hard', 'all', 'league', 'new', 'reverse', 'crazy'].some((element) => trackType == element)) {
+      reject(new Error('invalid trackType'))
+    }
+
+    const conditionList = []
+
+    if (mode == 'speed') {
+      if (trackType == 'crazy') {
+        reject(new Error('speed mode is not available on crazy random'))
+      }
+
+      conditionList.push('crazy = false')
+    }
+    else {
+      conditionList.push('item = true')
+    }
+
+    if (['all', 'reverse', 'crazy'].some((element) => trackType == element) == 0) {
+      conditionList.push(`${mode}_${trackType} = true`)
+    }
+    else if (trackType != 'all') {
+      conditionList.push(`${trackType} = true`)
+    }
+
+    try {
+      let query = `SELECT * FROM track WHERE ${conditionList.join(' AND ')}`
+
+      if (amount) {
+        query += ` ORDER BY RAND() LIMIT ${amount}`
+      }
+
+      const result = await pool.query(query)
+      resolve(result[0])
+    }
+    catch (error) {
+      reject(new Error(error))
+    }
+  })
 }
