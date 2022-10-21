@@ -1,0 +1,68 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카트웹</title>
+
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+</head>
+
+<body>
+    <video autoplay muted loop class="bg">
+        <source src="/videos/bg.mp4" type="video/mp4">
+    </video>
+    <div class="bg"></div>
+
+    <div class="banpick-list">
+        <div>
+            <p>ROUND 1 (랜덤)</p>
+            <div></div>
+        </div>
+        <div>
+            <p class="opponent">ROUND 2</p>
+            <div></div>
+        </div>
+        <div class="ban">
+            <p class="host">BAN 1</p>
+            <div></div>
+        </div>
+        <div class="ban">
+            <p class="opponent">BAN 2</p>
+            <div></div>
+        </div>
+        <div>
+            <p class="host">ROUND 3</p>
+            <div></div>
+        </div>
+        <div>
+            <p class="opponent">ROUND 4</p>
+            <div></div>
+        </div>
+        <div>
+            <p class="host">ROUND 5</p>
+            <div></div>
+        </div>
+        <div>
+            <p class="opponent">ROUND 6</p>
+            <div></div>
+        </div>
+        <div>
+            <p class="host">ROUND 7</p>
+            <div></div>
+        </div>
+    </div>
+
+    <div class="track-list">
+
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.38/dist/sweetalert2.all.min.js"></script>
+    <script type="module" src="/scripts/banpick.mjs"></script>
+</body>
+
+</html>

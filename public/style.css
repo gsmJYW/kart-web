@@ -4,16 +4,6 @@
     font-family: 'Nanum Gothic', serif;
 }
 
-.row {
-    width: 140vmin;
-}
-
-.row>img {
-    padding-top: 12px;
-    padding-bottom: 12px;
-    cursor: pointer;
-}
-
 .bg {
     position: fixed;
     right: 0;
@@ -52,7 +42,7 @@ div.bg {
     font-size: 1.4vmin;
 }
 
-.game-card > div > button {
+.game-card>div>button {
     font-size: 1.4vmin;
 }
 
@@ -62,4 +52,71 @@ div.bg {
 
 .open-game {
     margin-left: 14vmin;
+}
+
+.track-type-list {
+    width: 140vmin;
+}
+
+.track-type-list>img {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    cursor: pointer;
+}
+
+.track-list {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 2vmin 0vw 5vmin 2.8vw;
+}
+
+.track-list>div>* {
+    width: 14.75vw;
+}
+
+.track-list>div {
+    margin: 0.5vw;
+    cursor: pointer;
+}
+
+.banpick-list {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 5vmin 0vw 2vmin 0vw;
+    justify-content: center;
+}
+
+.banpick-list>* {
+    width: 9.5vw;
+}
+
+.banpick-list>div {
+    margin: 0.5vw;
+}
+
+.banpick-list>div>div,
+.banpick-list>div>img {
+    height: 5.5vw;
+}
+
+.banpick-list>.ban>div {
+    background-color: rgba(255, 0, 0, 0.25);
+}
+
+.banpick-list>div>div {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+.track-list>div>p,
+.banpick-list>div>p {
+    font-size: 0.8vw;
+    color: white;
+    text-align: center;
+    margin: auto;
+}
+
+.ban>img {
+    filter: gray;
+    -webkit-filter: grayscale(1);
+    filter: grayscale(1);
 }
