@@ -85,7 +85,7 @@ app.get('/', async (req, res) => {
     const result = await pool.query(`SELECT * FROM user WHERE id = ${user.id}`)
 
     if (result[0][0]) {
-      await pool.query(`UPDATE user SET name = '${user.username}', avatar = '${user.avatar}'`)
+      await pool.query(`UPDATE user SET name = '${user.username}', discriminator = ${user.discriminator}, avatar = ${user.avatar ? `'${user.avatar}'` : 'NULL'} WHERE id = ${user.id}`)
       res.sendFile(__dirname + '/views/lobby.html')
     }
     else {
@@ -137,7 +137,7 @@ app.post('/signup', async (req, res) => {
     const accessToken = decrypt(req.session.access_token)
     const user = await oauth.getUser(accessToken)
 
-    await pool.query(`INSERT INTO user (id, name, avatar, rider_id) VALUES (${user.id}, '${user.username}', '${user.avatar}', '${rider.accessId}')`)
+    await pool.query(`INSERT INTO user (id, name, discriminator, avatar, rider_id) VALUES (${user.id}, '${user.username}', ${user.discriminator}, ${user.avatar ? `'${user.avatar}'` : 'NULL'}, '${rider.accessId}')`)
 
     res.json({
       result: 'OK',
