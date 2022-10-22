@@ -20,17 +20,27 @@ try {
         const hostRider = await postAsync('/rider/name', { rider_id: game.host_rider_id })
         const opponentRider = await postAsync('/rider/name', { rider_id: game.opponent_rider_id })
 
+        document.querySelector('.track-list').innerHTML = ''
+
+        for (const banpick of document.querySelectorAll('.banpick-list > div > div, .banpick-list > div > p:nth-child(3), .banpick-list > div > img')) {
+            banpick.remove()
+        }
+
+        for (const banpick of document.querySelectorAll('.banpick-list > div')) {
+            const div = document.createElement('div')
+            banpick.appendChild(div)
+        }
+
         for (const host of document.querySelectorAll('.host')) {
-            host.textContent += ` (${hostRider.rider_name})`
+            host.textContent = `${host.textContent.split('(')[0].trim()} (${hostRider.rider_name})`
         }
 
         for (const opponent of document.querySelectorAll('.opponent')) {
-            opponent.textContent += ` (${opponentRider.rider_name})`
+            opponent.textContent = `${opponent.textContent.split('(')[0].trim()} (${opponentRider.rider_name})`
         }
 
         for (const track of game.banpick) {
             const trackImage = document.createElement('img')
-            trackImage.id = track.track_name
             trackImage.src = `/images/tracks/${track.track_name}.png`
 
             const trackName = document.createElement('p')
@@ -48,6 +58,7 @@ try {
             else {
                 const div = document.createElement('div')
 
+                div.id = track.track_name
                 div.appendChild(trackImage)
                 div.appendChild(trackName)
 
@@ -63,6 +74,20 @@ try {
             currentBanpick.textContent = '밴픽 진행 중'
 
             currentBanpickDiv.appendChild(currentBanpick)
+        }
+
+        for (const track of document.querySelectorAll('.track-list > div')) {
+            track.addEventListener('click', async (e) => {
+                const res = await postAsync('/banpick', { track_name: track.id })
+
+                if (res.result == 'error') {
+                    await Swal.fire({
+                        icon: 'warning',
+                        html: res.error,
+                        confirmButtonText: '확인',
+                    })
+                }
+            })
         }
 
         if (game.game_started_at) {
