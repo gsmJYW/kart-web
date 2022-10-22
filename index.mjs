@@ -97,6 +97,25 @@ app.get('/', async (req, res) => {
   }
 })
 
+app.post('/timestamp', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('not authorized')
+    }
+
+    res.json({
+      result: 'OK',
+      timestamp: Math.floor(new Date().getTime() / 1000),
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      error: error.message,
+    })
+  }
+})
+
 app.post('/signup', async (req, res) => {
   try {
     if (!req.session.access_token) {
@@ -284,8 +303,10 @@ app.get('/game/event', async (req, res) => {
     }
 
     if (game) {
+      gameEvent.gameId = game.id
+
       if (game.opponent_id) {
-        const result = await pool.query(`SELECT b.track_name, b.order, b.picked, b.banned, b.user_id FROM banpick as b INNER JOIN game as g WHERE b.game_id = g.id AND b.game_id='${game.id}'`)
+        const result = await pool.query(`SELECT b.track_name, b.order, b.picked, b.banned, b.user_id, b.banpicked_at FROM banpick as b INNER JOIN game as g WHERE b.game_id = g.id AND b.game_id='${game.id}'`)
         game.banpick = result[0]
       }
     }
@@ -341,7 +362,7 @@ app.post('/game/create', async (req, res) => {
 
     while (result[0].affectedRows == 0) {
       gameId = Crypto.randomUUID().slice(0, 6)
-      result = await pool.query(`INSERT IGNORE INTO game (id, host_id, host_rider_id, mode, track_type, banpick_amount) VALUES ('${gameId}', '${userId}', (SELECT rider_id FROM user WHERE id = '${userId}'), '${mode}', '${trackType}', ${banpickAmount})`)
+      result = await pool.query(`INSERT IGNORE INTO game (id, host_id, host_rider_id, opened_at, mode, track_type, banpick_amount) VALUES ('${gameId}', '${userId}', (SELECT rider_id FROM user WHERE id = '${userId}'), UNIX_TIMESTAMP(NOW()), '${mode}', '${trackType}', ${banpickAmount})`)
     }
 
     for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.userId == userId)) {
@@ -365,6 +386,8 @@ app.post('/game/create', async (req, res) => {
     })
   }
 })
+
+let banpickTimerList = []
 
 app.post('/game/join', async (req, res) => {
   try {
@@ -395,22 +418,26 @@ app.post('/game/join', async (req, res) => {
     }
 
     const trackList = await getTrackList(game.mode, game.track_type, game.banpick_amount)
-    const valueList = [`('${game.id}', '${trackList.pop().name}', 1, true, 1)`]
+    const valueList = [`('${game.id}', '${trackList.pop().name}', 1, true, 1, UNIX_TIMESTAMP(NOW()))`]
 
     for (const track of trackList) {
-      valueList.push(`('${game.id}', '${track.name}', NULL, false, NULL)`)
+      valueList.push(`('${game.id}', '${track.name}', NULL, false, NULL, NULL)`)
     }
 
-    await pool.query(`INSERT INTO banpick (game_id, track_name, \`order\`, picked, round) VALUES ${valueList.join(',')}`)
+    await pool.query(`INSERT INTO banpick (game_id, track_name, \`order\`, picked, round, banpicked_at) VALUES ${valueList.join(',')}`)
 
     req.session.player_id = req.session.user_id
     req.session.save()
 
-    await pool.query(`UPDATE game SET opponent_id = ${userId}, opponent_rider_id = ${riderId}, banpick_started_at = CURRENT_TIMESTAMP WHERE id = '${gameId}'`)
+    await pool.query(`UPDATE game SET opponent_id = ${userId}, opponent_rider_id = ${riderId}, banpick_started_at = UNIX_TIMESTAMP(NOW()) WHERE id = '${gameId}'`)
+
+    setRandomBanpickTimer(game, 2)
 
     game.opponent_id = userId
 
-    for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.userId == userId || gameEvent.userId == game.host_id)) {
+    for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.userId == game.host_id || gameEvent.userId == userId)) {
+      game.opponent_rider_id = riderId
+      gameEvent.gameId = game.id
       gameEvent.res.write(`event: game_update\ndata: ${JSON.stringify(game)}\n\n`)
     }
 
@@ -451,27 +478,6 @@ app.get('/images/tracks/:track', async (req, res) => {
   res.sendFile(`${__dirname}/images/tracks/${req.params.track}.png`)
 })
 
-app.post('/banpick/track', async (req, res) => {
-  try {
-    if (!req.session.access_token) {
-      throw new Error('not authorized')
-    }
-
-    const result = await pool.query(`SELECT b.track_name, b.order, b.picked, b.banned, b.user_id FROM banpick as b INNER JOIN game as g WHERE '${decrypt(req.session.user_id)}' in (g.host_id, g.opponent_id) AND g.closed_at IS NULL`)
-
-    res.json({
-      result: 'OK',
-      banpick: result[0][0],
-    })
-  }
-  catch (error) {
-    res.json({
-      result: 'error',
-      error: error.message,
-    })
-  }
-})
-
 app.post('/banpick', async (req, res) => {
   try {
     if (!req.session.access_token) {
@@ -481,86 +487,55 @@ app.post('/banpick', async (req, res) => {
     const userId = decrypt(req.session.user_id)
     const trackName = req.body.track_name
 
-    let result = await pool.query(`SELECT * FROM game WHERE'${decrypt(req.session.user_id)}' in (host_id, opponent_id) AND banpick_started_at IS NOT NULL AND game_started_at IS NULL`)
+    let result = await pool.query(`SELECT * FROM game WHERE'${decrypt(req.session.user_id)}' in (host_id, opponent_id) AND banpick_started_at IS NOT NULL AND game_started_at IS NULL AND closed_at IS NULL`)
     const game = result[0][0]
 
     if (!game) {
       throw new Error('진행 중인 밴픽이 없습니다.')
     }
 
-    result = await pool.query(`SELECT b.game_id, g.host_id, g.opponent_id, b.track_name, b.order, b.picked, b.banned, b.user_id FROM banpick as b INNER JOIN game as g WHERE b.game_id = g.id AND b.game_id = '${game.id}' ORDER BY b.order DESC`)
+    result = await pool.query(`SELECT b.game_id, g.host_id, g.opponent_id, b.track_name, b.order, b.picked, b.banned, b.banpicked_at FROM banpick as b INNER JOIN game as g WHERE b.game_id = g.id AND b.game_id = '${game.id}' ORDER BY b.order DESC`)
     const banpickList = result[0]
 
     if (!banpickList[0]) {
       throw new Error('진행 중인 밴픽이 없습니다.')
     }
 
-    let picked = true
-    let hostBanpick = true
-
     const order = banpickList[0].order + 1
+    const turn = getBanpickTurn(order)
 
-    switch (order) {
-      case 5:
-      case 7:
-      case 9:
-        picked = true
-        hostBanpick = true
-        break
-      
-      case 2:
-      case 6:
-      case 8:
-        picked = true
-        hostBanpick = false
-        break
-
-      case 3:
-        picked = false
-        hostBanpick = true
-        break
-
-      case 4:
-        picked = false
-        hostBanpick = false
-        break
-    }
-
-    if ((hostBanpick && userId != banpickList[0].host_id) || (!hostBanpick && userId != banpickList[0].opponent_id)) {
+    if ((turn.host && userId != banpickList[0].host_id) || (!turn.host && userId != banpickList[0].opponent_id)) {
       throw new Error('현재 차례가 아닙니다.')
     }
 
-    let round = 'NULL'
+    const banpick = banpickList.find((banpick) => banpick.track_name == trackName && !banpick.order)
 
-    if (picked) {
-      round = order
-
-      if (order > 2) {
-        round -= 2
-      }
-    }
-
-    const banpickIndex = banpickList.findIndex((banpick) => banpick.track_name == trackName && !banpick.picked && !banpick.banned)
-
-    if (banpickIndex < 0) {
+    if (!banpick) {
       throw new Error('밴픽 트랙이 아니거나 이미 선택된 트랙입니다.')
     }
 
-    banpickList[banpickIndex].order = order
-    banpickList[banpickIndex].picked = picked
-    banpickList[banpickIndex].banned = !picked
-    banpickList[banpickIndex].round = round
-    banpickList[banpickIndex].user_id = userId
-    game.banpick = banpickList
+    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${turn.pick}, banned = ${!turn.pick}, round = ${turn.round}, user_id = ${userId}, banpicked_at = UNIX_TIMESTAMP(NOW()) WHERE game_id = '${game.id}' AND track_name = '${trackName}'`)
 
-    // 임시 코드 (밴픽 끝나면 게임 종료)
-    if (order >= 9) {
-      await pool.query(`UPDATE game SET closed_at = CURRENT_TIMESTAMP WHERE id = '${game.id}'`)
+    for (const banpickTimerIndex in banpickTimerList) {
+      if (banpickTimerList[banpickTimerIndex].gameId == game.id) {
+        clearTimeout(banpickTimerList[banpickTimerIndex].id)
+      }
+      else {
+        banpickTimerList.splice(banpickTimerIndex, 1)
+      }
     }
 
-    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${picked}, banned = ${!picked}, round = ${round}, user_id = ${userId} WHERE game_id = '${game.id}' AND track_name = '${trackName}'`)
+    if (order < 9) {
+      setRandomBanpickTimer(game, order + 1)
+    }
+    else {
+      startGame(game.id)
+    }
 
-    for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.userId == game.host_id || gameEvent.userId == game.opponent_id)) {
+    result = await pool.query(`SELECT b.track_name, b.order, b.picked, b.banned, b.user_id, b.banpicked_at FROM banpick as b INNER JOIN game as g WHERE b.game_id = g.id AND b.game_id='${game.id}'`)
+    game.banpick = result[0]
+
+    for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.gameId == game.id)) {
       gameEvent.res.write(`event: game_update\ndata: ${JSON.stringify(game)}\n\n`)
     }
 
@@ -632,4 +607,83 @@ function getTrackList(mode, trackType, amount = NaN) {
       reject(new Error(error))
     }
   })
+}
+
+function getBanpickTurn(order) {
+  let pick
+  let host
+  let round = 'NULL'
+
+  switch (order) {
+    case 5:
+    case 7:
+    case 9:
+      pick = true
+      host = true
+      break
+
+    case 2:
+    case 6:
+    case 8:
+      pick = true
+      host = false
+      break
+
+    case 3:
+      pick = false
+      host = true
+      break
+
+    case 4:
+      pick = false
+      host = false
+      break
+  }
+
+  if (pick) {
+    round = order
+
+    if (order > 2) {
+      round -= 2
+    }
+  }
+
+  return {
+    pick: pick,
+    host: host,
+    round: round,
+  }
+}
+
+async function setRandomBanpickTimer(game, order) {
+  const turn = getBanpickTurn(order)
+
+  const timerId = setTimeout(async () => {
+    banpickTimerList = banpickTimerList.filter((banpickTimer) => banpickTimer.gameId != game.id)
+    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${turn.pick}, banned = ${!turn.pick}, round = ${turn.round}, banpicked_at = UNIX_TIMESTAMP(NOW()) WHERE game_id = '${game.id}' AND track_name = (SELECT track_name FROM (SELECT track_name FROM banpick WHERE game_id = '${game.id}' AND \`order\` IS NULL ORDER BY RAND() LIMIT 1) random_track)`)
+
+    if (order < 9) {
+      setRandomBanpickTimer(game, order + 1)
+    }
+    else {
+      startGame(game.id)
+    }
+
+    const result = await pool.query(`SELECT b.game_id, g.host_id, g.opponent_id, b.track_name, b.order, b.picked, b.banned, b.banpicked_at FROM banpick as b INNER JOIN game as g WHERE b.game_id = g.id AND b.game_id = '${game.id}'`)
+    game.banpick = result[0]
+
+    for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.gameId == game.id)) {
+      gameEvent.res.write(`event: game_update\ndata: ${JSON.stringify(game)}\n\n`)
+    }
+  }, 1000 * 60)
+
+  banpickTimerList.push({
+    id: timerId,
+    gameId: game.id,
+  })
+}
+
+async function startGame(id) {
+  // 임시 코드 (밴픽 끝나면 게임 종료)
+  await pool.query(`UPDATE game SET closed_at = UNIX_TIMESTAMP(NOW()) WHERE id = '${id}'`)
 }
