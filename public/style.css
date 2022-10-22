@@ -67,7 +67,7 @@ div.bg {
 .track-list {
     display: flex;
     flex-wrap: wrap;
-    padding: 2vmin 0vw 5vmin 2.8vw;
+    padding: 2vmin 0vw 5vmin 2.6vw;
 }
 
 .track-list>div>* {
@@ -119,4 +119,19 @@ div.bg {
     filter: gray;
     -webkit-filter: grayscale(1);
     filter: grayscale(1);
+}
+
+.turn {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.5);
+    color: black;
+    border-radius: 1vmin;
+    font-size: 2vmin;
+    text-align: right;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    padding: 1vmin 2vmin;
+    margin: 2vmin;
+    z-index: 10;
 }

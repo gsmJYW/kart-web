@@ -12,6 +12,8 @@ function postAsync(url, params = {}) {
     })
 }
 
+let lastBanpickedAt
+
 try {
     const eventSource = new EventSource('/game/event')
     eventSource.addEventListener('game_update', async (e) => {
@@ -32,11 +34,11 @@ try {
         }
 
         for (const host of document.querySelectorAll('.host')) {
-            host.textContent = `${host.textContent.split('(')[0].trim()} (${hostRider.rider_name})`
+            host.textContent = hostRider.rider_name
         }
 
         for (const opponent of document.querySelectorAll('.opponent')) {
-            opponent.textContent = `${opponent.textContent.split('(')[0].trim()} (${opponentRider.rider_name})`
+            opponent.textContent = opponentRider.rider_name
         }
 
         for (const track of game.banpick) {
@@ -67,14 +69,44 @@ try {
         }
 
         const currentOrder = Math.max(...game.banpick.map(banpick => banpick.order)) + 1
-        const currentBanpickDiv = document.querySelector(`.banpick-list > div:nth-child(${currentOrder})`)
+        const turn = document.querySelector('.turn')
+        let turnRiderName
 
-        if (currentBanpickDiv) {
-            const currentBanpick = document.createElement('p')
-            currentBanpick.textContent = '밴픽 진행 중'
-
-            currentBanpickDiv.appendChild(currentBanpick)
+        if (currentOrder % 2) {
+            turnRiderName = hostRider.rider_name
         }
+        else {
+            turnRiderName = opponentRider.rider_name
+        }
+
+        if (currentOrder <= 9) {
+            const currentBanpickDiv = document.querySelector(`.banpick-list > div:nth-child(${currentOrder})`)
+
+            if (currentBanpickDiv) {
+                const currentBanpick = document.createElement('p')
+                currentBanpick.innerHTML = `<strong>${turnRiderName}</strong> 차례`
+
+                currentBanpickDiv.appendChild(currentBanpick)
+            }
+
+            document.querySelector('.turn-rider').textContent = turnRiderName
+
+            const banOrPick = document.querySelector('.ban-or-pick')
+
+            if (currentOrder == 3 || currentOrder == 4) {
+                banOrPick.textContent = '금지'
+            }
+            else {
+                banOrPick.textContent = '선택'
+            }
+
+            turn.hidden = false
+        }
+        else {
+            turn.hidden = true
+        }
+
+        lastBanpickedAt = Math.max(...game.banpick.map(banpick => banpick.banpicked_at))
 
         for (const track of document.querySelectorAll('.track-list > div')) {
             track.addEventListener('click', async (e) => {
@@ -114,3 +146,12 @@ catch (error) {
 
     location.reload()
 }
+
+setInterval(async () => {
+    const res = await postAsync('/timestamp')
+    const remainTimestamp = res.timestamp - lastBanpickedAt
+
+    if (remainTimestamp >= 0) {
+        document.querySelector('.remain-time').textContent = 60 - remainTimestamp
+    }
+}, 1000)
