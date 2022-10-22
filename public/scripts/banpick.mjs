@@ -13,6 +13,8 @@ function postAsync(url, params = {}) {
 }
 
 let lastBanpickedAt
+let order
+let interval
 
 try {
     const eventSource = new EventSource('/game/event')
@@ -68,32 +70,42 @@ try {
             }
         }
 
-        const currentOrder = Math.max(...game.banpick.map(banpick => banpick.order)) + 1
+        order = Math.max(...game.banpick.map(banpick => banpick.order)) + 1
         const turn = document.querySelector('.turn')
-        let turnRiderName
 
-        if (currentOrder % 2) {
-            turnRiderName = hostRider.rider_name
-        }
-        else {
-            turnRiderName = opponentRider.rider_name
-        }
+        if (order <= 9) {
+            let turnRiderName
+            let remainOrder = order
 
-        if (currentOrder <= 9) {
-            const currentBanpickDiv = document.querySelector(`.banpick-list > div:nth-child(${currentOrder})`)
+            for (const remainBanpickDiv of document.querySelectorAll(`.banpick-list > div:nth-child(n + ${order})`)) {
+                let remainTurnRiderName
 
-            if (currentBanpickDiv) {
-                const currentBanpick = document.createElement('p')
-                currentBanpick.innerHTML = `<strong>${turnRiderName}</strong> 차례`
+                if (remainOrder % 2) {
+                    remainTurnRiderName = hostRider.rider_name
+                }
+                else {
+                    remainTurnRiderName = opponentRider.rider_name
+                }
 
-                currentBanpickDiv.appendChild(currentBanpick)
+                const p = document.createElement('p')
+                p.innerHTML = remainTurnRiderName
+
+                remainBanpickDiv.appendChild(p)
+                remainOrder++
+            }
+
+            if (order % 2) {
+                turnRiderName = hostRider.rider_name
+            }
+            else {
+                turnRiderName = opponentRider.rider_name
             }
 
             document.querySelector('.turn-rider').textContent = turnRiderName
 
             const banOrPick = document.querySelector('.ban-or-pick')
 
-            if (currentOrder == 3 || currentOrder == 4) {
+            if (order == 3 || order == 4) {
                 banOrPick.textContent = '금지'
             }
             else {
@@ -104,6 +116,7 @@ try {
         }
         else {
             turn.hidden = true
+            clearInterval(interval)
         }
 
         lastBanpickedAt = Math.max(...game.banpick.map(banpick => banpick.banpicked_at))
@@ -147,11 +160,13 @@ catch (error) {
     location.reload()
 }
 
-setInterval(async () => {
-    const res = await postAsync('/timestamp')
-    const remainTimestamp = res.timestamp - lastBanpickedAt
+interval = setInterval(async () => {
+    if (order && order <= 9) {
+        const res = await postAsync('/timestamp')
+        const remainTimestamp = res.timestamp - lastBanpickedAt
 
-    if (remainTimestamp >= 0) {
-        document.querySelector('.remain-time').textContent = 60 - remainTimestamp
+        if (remainTimestamp >= 0) {
+            document.querySelector('.remain-time').textContent = 60 - remainTimestamp
+        }
     }
 }, 1000)
