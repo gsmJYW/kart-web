@@ -1,0 +1,73 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카트웹</title>
+
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+</head>
+
+<body>
+    <video autoplay muted loop class="bg">
+        <source src="/videos/bg.mp4" type="video/mp4">
+    </video>
+    <div class="bg"></div>
+
+    <p class="score">
+        <strong class="host-score">0</strong> <strong class="host">Dorei</strong> vs <strong class="opponent">lGNKlSnow</strong> <strong class="opponent-score">0</strong>
+    </p>
+
+    <div class="round-list">
+        <div>
+            <p>ROUND 1</p>
+            <div></div>
+        </div>
+        <div>
+            <p>ROUND 2</p>
+            <div></div>
+        </div>
+        <div>
+            <p>ROUND 3</p>
+            <div></div>
+        </div>
+        <div>
+            <p>ROUND 4</p>
+            <div></div>
+        </div>
+        <div>
+            <p>ROUND 5</p>
+            <div></div>
+        </div>
+        <div>
+            <p>ROUND 6</p>
+            <div></div>
+        </div>
+        <div>
+            <p>ROUND 7</p>
+            <div></div>
+        </div>
+    </div>
+
+    <div class="current-round">
+        <div></div>
+    </div>
+
+    <div class="bottom-left">
+        멀티플레이에서 1:1 진행 후 우측 하단 <strong>라운드 완료</strong> 버튼을 눌러주세요. <br>
+        두 플레이어 모두 버튼을 누르거나 <strong class="remain-time"></strong>초 경과 시 다음 라운드로 넘어갑니다. <br>
+    </div>
+
+    <div class="bottom-right">
+        <button class="finish-round btn btn-outline-light" type="button">라운드 완료</button>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.38/dist/sweetalert2.all.min.js"></script>
+    <script type="module" src="/scripts/round.mjs"></script>
+</body>
+
+</html>

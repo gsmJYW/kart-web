@@ -103,12 +103,14 @@ div.bg {
     background-color: rgba(255, 0, 0, 0.25);
 }
 
-.banpick-list>div>div {
+.banpick-list>div>div,
+.round-list>div>div {
     background-color: rgba(255, 255, 255, 0.5);
 }
 
 .track-list>div>p,
-.banpick-list>div>p {
+.banpick-list>div>p,
+.round-list>div>p {
     font-size: 0.8vw;
     color: white;
     text-align: center;
@@ -133,5 +135,79 @@ div.bg {
     right: 0;
     padding: 1vmin 2vmin;
     margin: 2vmin;
-    z-index: 10;
+}
+
+.score {
+    font-size: 5vmin;
+    color: white;
+    text-align: center;
+    margin: 1vmin 0vw 2vmin 0vw;
+}
+
+.round-list {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 2vmin 0vw 5vmin 0vw;
+    justify-content: center;
+}
+
+.round-list>* {
+    width: 12vw;
+}
+
+.round-list>div {
+    margin: 0.5vw;
+}
+
+.round-list>div>div,
+.round-list>div>img {
+    height: 7vw;
+}
+
+.current-round {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, 0%);
+}
+
+.current-round>div>img {
+    width: 50vmin;
+    height: 30vmin;
+}
+
+.current-round>div>p {
+    font-size: 2.5vmin;
+    color: white;
+    text-align: center;
+    margin: auto;
+}
+
+.bottom-left {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.5);
+    color: black;
+    border-radius: 1vmin;
+    font-size: 2vmin;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    padding: 1vmin 2vmin;
+    margin: 2vmin;
+}
+
+.bottom-right {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    margin: 2vmin;
+}
+
+.finish-round {
+    padding: 2.5vmin 4vmin !important;
+    font-size: 2vmin !important;
+    border-radius: 0 !important;
 }
