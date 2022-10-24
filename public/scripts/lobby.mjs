@@ -1,10 +1,147 @@
 try {
     const eventSource = new EventSource('/game/event')
     eventSource.addEventListener('game_update', async (e) => {
-        const game = JSON.parse(e.data)
-        buildGameCard(game)
+        const data = JSON.parse(e.data)
 
-        if (game.opponent_id) {
+        if (!data.game.opened_at) {
+            document.querySelector('.game-card').hidden = true
+            return
+        }
+
+
+        let title
+
+        switch (data.game.mode) {
+            case 'speed':
+                title = '스피드'
+                break
+
+            case 'item':
+                title = '아이템'
+                break
+        }
+
+        title += ' / '
+
+        switch (data.game.track_type) {
+            case 'very_easy':
+                title += 'Very Easy 랜덤'
+                break
+
+            case 'easy':
+                title += 'Easy 랜덤'
+                break
+
+            case 'normal':
+                title += 'Normal 랜덤'
+                break
+
+            case 'hard':
+                title += 'Hard 랜덤'
+                break
+
+            case 'very_hard':
+                title += 'Very Hard 랜덤'
+                break
+
+            case 'all':
+                title += '전체 랜덤'
+                break
+
+            case 'league':
+                title += '리그 랜덤'
+                break
+
+            case 'new':
+                title += '뉴 랜덤'
+                break
+
+            case 'reverse':
+                title += '리버스 랜덤'
+                break
+
+            case 'crazy':
+                title += '크레이지 랜덤'
+                break
+        }
+
+        const gameStarted = document.querySelector('.game-started')
+        const gameWaiting = document.querySelector('.game-waiting')
+
+        if (data.game.opponent_id) {
+            gameStarted.hidden = false
+            gameWaiting.hidden = true
+
+            let subtitle = '밴픽 진행 중'
+
+            if (data.game.round_started_at) {
+                subtitle = '게임 진행 중'
+            }
+
+            document.querySelector('.game-started > div > .game-card-subtitle').textContent = subtitle
+            document.querySelector('.open-game').addEventListener('click', () => {
+                if (data.game.round_started_at) {
+                    window.location.href = '/round'
+                }
+                else {
+                    window.location.href = '/banpick'
+                }
+            })
+        }
+        else {
+            gameStarted.hidden = true
+            gameWaiting.hidden = false
+
+            document.querySelector('.banpick-amount').textContent = data.game.banpick_amount
+            document.querySelector('.show-game-id').addEventListener('click', async () => {
+                const res = await Swal.fire({
+                    title: `초대 코드`,
+                    html: data.game.id,
+                    showCancelButton: true,
+                    confirmButtonText: '복사',
+                    cancelButtonText: '닫기',
+                })
+
+                if (res.isConfirmed) {
+                    await navigator.clipboard.writeText(data.game.id)
+                }
+            })
+            document.querySelector('.close-game').addEventListener('click', async () => {
+                try {
+                    const res = await postAsync('/game/close')
+
+                    if (res.result == 'error') {
+                        throw new Error(res.error)
+                    }
+                }
+                catch (error) {
+                    await Swal.fire({
+                        icon: 'warning',
+                        html: error.message,
+                        confirmButtonText: '확인',
+                    })
+                }
+            })
+        }
+
+        for (const gameCardTitle of document.querySelectorAll('.game-card-title')) {
+            gameCardTitle.textContent = title
+        }
+
+        if (data.game.round_started_at) {
+            const res = await Swal.fire({
+                title: '게임 시작',
+                html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
+                showCancelButton: true,
+                confirmButtonText: '확인',
+                cancelButtonText: '취소',
+            })
+
+            if (res.isConfirmed) {
+                location.href = '/round'
+            }
+        }
+        else if (data.game.banpick_started_at) {
             const res = await Swal.fire({
                 title: '게임 시작',
                 html: '밴픽이 진행 중입니다. <br> 이동 하시겠습니까?',
@@ -41,124 +178,6 @@ function postAsync(url, params = {}) {
             resolve(await res.json())
         }).catch((error) => reject(error))
     })
-}
-
-function buildGameCard(game) {
-    let title
-
-    switch (game.mode) {
-        case 'speed':
-            title = '스피드'
-            break
-
-        case 'item':
-            title = '아이템'
-            break
-    }
-
-    title += ' / '
-
-    switch (game.track_type) {
-        case 'very_easy':
-            title += 'Very Easy 랜덤'
-            break
-
-        case 'easy':
-            title += 'Easy 랜덤'
-            break
-
-        case 'normal':
-            title += 'Normal 랜덤'
-            break
-
-        case 'hard':
-            title += 'Hard 랜덤'
-            break
-
-        case 'very_hard':
-            title += 'Very Hard 랜덤'
-            break
-
-        case 'all':
-            title += '전체 랜덤'
-            break
-
-        case 'league':
-            title += '리그 랜덤'
-            break
-
-        case 'new':
-            title += '뉴 랜덤'
-            break
-
-        case 'reverse':
-            title += '리버스 랜덤'
-            break
-
-        case 'crazy':
-            title += '크레이지 랜덤'
-            break
-    }
-
-    const gameStarted = document.querySelector('.game-started')
-    const gameWaiting = document.querySelector('.game-waiting')
-
-    if (game.opponent_id) {
-        gameStarted.hidden = false
-        gameWaiting.hidden = true
-
-        let subtitle = '밴픽 진행 중'
-
-        if (game.game_started_at) {
-            subtitle = '게임 진행 중'
-        }
-
-        document.querySelector('.game-started > div > .game-card-subtitle').textContent = subtitle
-        document.querySelector('.open-game').addEventListener('click', () => {
-            window.location.href = '/banpick'
-        })
-    }
-    else {
-        gameStarted.hidden = true
-        gameWaiting.hidden = false
-
-        document.querySelector('.banpick-amount').textContent = game.banpick_amount
-        document.querySelector('.show-game-id').addEventListener('click', async () => {
-            const res = await Swal.fire({
-                title: `초대 코드`,
-                html: game.id,
-                showCancelButton: true,
-                confirmButtonText: '복사',
-                cancelButtonText: '닫기',
-            })
-
-            if (res.isConfirmed) {
-                await navigator.clipboard.writeText(game.id)
-            }
-        })
-        document.querySelector('.close-game').addEventListener('click', async () => {
-            try {
-                const res = await postAsync('/game/close')
-
-                if (res.result == 'error') {
-                    throw new Error(res.error)
-                }
-
-                document.querySelector('.game-card').hidden = true
-            }
-            catch (error) {
-                await Swal.fire({
-                    icon: 'warning',
-                    html: error.message,
-                    confirmButtonText: '확인',
-                })
-            }
-        })
-    }
-
-    for (const gameCardTitle of document.querySelectorAll('.game-card-title')) {
-        gameCardTitle.textContent = title
-    }
 }
 
 document.querySelector('.signout').addEventListener('click', async () => {

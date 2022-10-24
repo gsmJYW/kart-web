@@ -19,50 +19,61 @@ let interval
 try {
     const eventSource = new EventSource('/game/event')
     eventSource.addEventListener('game_update', async (e) => {
-        const game = JSON.parse(e.data)
+        const data = JSON.parse(e.data)
 
-        const hostRider = await postAsync('/rider/name', { rider_id: game.host_rider_id })
-        const opponentRider = await postAsync('/rider/name', { rider_id: game.opponent_rider_id })
+        let res = await postAsync('/rider/name', { rider_id: data.game.host_rider_id })
+
+        if (res.result == 'error') {
+            throw new Error(res.error)
+        }
+
+        const hostRiderName = res.rider_name
+
+        res = await postAsync('/rider/name', { rider_id: data.game.opponent_rider_id })
+
+        if (res.result == 'error') {
+            throw new Error(res.error)
+        }
+
+        const opponentRiderName = res.rider_name
 
         document.querySelector('.track-list').innerHTML = ''
 
-        for (const banpick of document.querySelectorAll('.banpick-list > div > div, .banpick-list > div > p:nth-child(3), .banpick-list > div > img')) {
-            banpick.remove()
+        for (const banpickElement of document.querySelectorAll('.banpick-list > div > div, .banpick-list > div > p:nth-child(3), .banpick-list > div > img')) {
+            banpickElement.remove()
         }
 
-        for (const banpick of document.querySelectorAll('.banpick-list > div')) {
+        for (const banpickDiv of document.querySelectorAll('.banpick-list > div')) {
             const div = document.createElement('div')
-            banpick.appendChild(div)
+            banpickDiv.appendChild(div)
         }
 
         for (const host of document.querySelectorAll('.host')) {
-            host.textContent = hostRider.rider_name
+            host.textContent = hostRiderName
         }
 
         for (const opponent of document.querySelectorAll('.opponent')) {
-            opponent.textContent = opponentRider.rider_name
+            opponent.textContent = opponentRiderName
         }
 
-        for (const track of game.banpick) {
+        for (const banpick of data.banpick) {
             const trackImage = document.createElement('img')
-            trackImage.src = `/images/tracks/${track.track_name}.png`
+            trackImage.src = `/images/tracks/${banpick.track_name}.png`
 
             const trackName = document.createElement('p')
-            trackName.textContent = `${track.track_name}`
+            trackName.textContent = banpick.track_name
 
-            if (track.picked || track.banned) {
-                const banpickBlank = document.querySelector(`.banpick-list > div:nth-child(${track.order}) > div`)
+            if (banpick.picked || banpick.banned) {
+                const banpickDiv = document.querySelector(`.banpick-list > div:nth-child(${banpick.order})`)
+                banpickDiv.appendChild(trackImage)
+                banpickDiv.appendChild(trackName)
 
-                const banpick = document.querySelector(`.banpick-list > div:nth-child(${track.order})`)
-                banpick.insertBefore(trackImage, banpickBlank)
-                banpick.insertBefore(trackName, banpickBlank)
-
-                banpickBlank.remove()
+                document.querySelector(`.banpick-list > div:nth-child(${banpick.order}) > div`).remove()
             }
             else {
                 const div = document.createElement('div')
 
-                div.id = track.track_name
+                div.id = banpick.track_name
                 div.appendChild(trackImage)
                 div.appendChild(trackName)
 
@@ -70,7 +81,7 @@ try {
             }
         }
 
-        order = Math.max(...game.banpick.map(banpick => banpick.order)) + 1
+        order = Math.max(...data.banpick.map((banpick) => banpick.order)) + 1
         const turn = document.querySelector('.turn')
 
         if (order <= 9) {
@@ -81,10 +92,10 @@ try {
                 let remainTurnRiderName
 
                 if (remainOrder % 2) {
-                    remainTurnRiderName = hostRider.rider_name
+                    remainTurnRiderName = hostRiderName
                 }
                 else {
-                    remainTurnRiderName = opponentRider.rider_name
+                    remainTurnRiderName = opponentRiderName
                 }
 
                 const p = document.createElement('p')
@@ -95,10 +106,10 @@ try {
             }
 
             if (order % 2) {
-                turnRiderName = hostRider.rider_name
+                turnRiderName = hostRiderName
             }
             else {
-                turnRiderName = opponentRider.rider_name
+                turnRiderName = opponentRiderName
             }
 
             document.querySelector('.turn-rider').textContent = turnRiderName
@@ -119,23 +130,28 @@ try {
             clearInterval(interval)
         }
 
-        lastBanpickedAt = Math.max(...game.banpick.map(banpick => banpick.banpicked_at))
+        lastBanpickedAt = Math.max(...data.banpick.map(banpick => banpick.banpicked_at))
 
         for (const track of document.querySelectorAll('.track-list > div')) {
-            track.addEventListener('click', async (e) => {
-                const res = await postAsync('/banpick', { track_name: track.id })
+            track.addEventListener('click', async () => {
+                try {
+                    const res = await postAsync('/banpick', { track_name: track.id })
 
-                if (res.result == 'error') {
+                    if (res.result == 'error') {
+                        throw new Error(res.error)
+                    }
+                }
+                catch (error) {
                     await Swal.fire({
                         icon: 'warning',
-                        html: res.error,
+                        html: error.message,
                         confirmButtonText: '확인',
                     })
                 }
             })
         }
 
-        if (game.game_started_at) {
+        if (data.game.round_started_at) {
             const res = await Swal.fire({
                 title: '게임 시작',
                 html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
@@ -145,7 +161,7 @@ try {
             })
 
             if (res.isConfirmed) {
-                location.href = '/banpick'
+                location.href = '/round'
             }
         }
     })
