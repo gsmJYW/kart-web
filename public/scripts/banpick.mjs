@@ -56,9 +56,11 @@ try {
             opponent.textContent = opponentRiderName
         }
 
+        console.log(data.banpick)
+
         for (const banpick of data.banpick) {
             const trackImage = document.createElement('img')
-            trackImage.src = `/images/tracks/${banpick.track_name}.png`
+            trackImage.src = `/images/tracks/${banpick.track_id}.png`
 
             const trackName = document.createElement('p')
             trackName.textContent = banpick.track_name
@@ -73,7 +75,7 @@ try {
             else {
                 const div = document.createElement('div')
 
-                div.id = banpick.track_name
+                div.id = banpick.track_id
                 div.appendChild(trackImage)
                 div.appendChild(trackName)
 
@@ -135,7 +137,7 @@ try {
         for (const track of document.querySelectorAll('.track-list > div')) {
             track.addEventListener('click', async () => {
                 try {
-                    const res = await postAsync('/banpick', { track_name: track.id })
+                    const res = await postAsync('/banpick', { track_id: track.id })
 
                     if (res.result == 'error') {
                         throw new Error(res.error)

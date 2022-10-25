@@ -3,22 +3,31 @@ try {
     eventSource.addEventListener('game_update', async (e) => {
         const data = JSON.parse(e.data)
 
-        if (!data.game.opened_at) {
+        if (!data.game) {
             document.querySelector('.game-card').hidden = true
             return
         }
 
-
         let title
 
-        switch (data.game.mode) {
-            case 'speed':
-                title = '스피드'
-                break
+        if (data.game.match_type.includes('speed')) {
+            title = '스피드'
+        }
+        else {
+            title = '아이템'
+        }
 
-            case 'item':
-                title = '아이템'
-                break
+        title += ' '
+
+        if (data.game.match_type.includes('Indi')) {
+            title += '개인전'
+        }
+        else {
+            title += '팀전'
+        }
+
+        if (data.game.match_type.includes('Infinit')) {
+            title += ' (무한)'
         }
 
         title += ' / '
@@ -100,6 +109,7 @@ try {
                     showCancelButton: true,
                     confirmButtonText: '복사',
                     cancelButtonText: '닫기',
+                    allowOutsideClick: false,
                 })
 
                 if (res.isConfirmed) {
@@ -237,75 +247,118 @@ document.querySelector('.join').addEventListener('click', async () => {
 for (const random of document.querySelectorAll('.track-type-list > img')) {
     random.addEventListener('click', async (e) => {
         const trackType = e.target.id
-        let mode = 'item'
+        let matchType = 'item'
 
         if (trackType != 'crazy') {
             const res = await Swal.fire({
                 html: `<img src="/images/randoms/${trackType}.png" />`,
                 input: 'radio',
                 inputOptions: {
-                    'item': '아이템전',
                     'speed': '스피드전',
+                    'item': '아이템전',
                 },
                 inputValue: 'speed',
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
-                inputValidator: (value) => {
-                    if (!value) {
-                        return '모드를 선택해주세요!'
-                    }
-                }
             })
-            mode = res.value
+
+            if (!res.isConfirmed) {
+                return
+            }
+
+            matchType = res.value
+        }
+
+        const res = await Swal.fire({
+            html: `<img src="/images/randoms/${trackType}.png" />`,
+            input: 'radio',
+            inputOptions: {
+                'Indi': '개인전',
+                'Team': '팀전',
+            },
+            inputValue: 'Indi',
+            showCancelButton: true,
+            confirmButtonText: '확인',
+            cancelButtonText: '취소',
+        })
+
+        if (!res.isConfirmed) {
+            return
+        }
+
+        matchType += res.value
+
+        if (matchType.includes('speed')) {
+            const res = await Swal.fire({
+                html: `<img src="/images/randoms/${trackType}.png" />`,
+                input: 'radio',
+                inputOptions: {
+                    'normal': '통합',
+                    'Infinit': '무한',
+                },
+                inputValue: 'normal',
+                showCancelButton: true,
+                confirmButtonText: '확인',
+                cancelButtonText: '취소',
+            })
+
+            if (res.value == 'Infinit') {
+                matchType += res.value
+            }
+        }
+
+        if (!res.isConfirmed) {
+            return
         }
 
         let banpickAmount = 0
 
-        if (mode) {
-            try {
-                let res = await postAsync('/tracks', { track_type: trackType, mode: mode })
+        try {
+            let res = await postAsync('/tracks', {
+                match_type: matchType,
+                track_type: trackType,
+            })
 
-                if (res.result == 'error') {
-                    throw new Error(res.error)
-                }
-
-                if (res.tracks.length < 9) {
-                    await Swal.fire({
-                        icon: 'warning',
-                        html: '트랙 수가 밴픽을 진행하기에 부족합니다.',
-                        confirmButtonText: '확인',
-                    })
-                    return
-                }
-
-                res = await Swal.fire({
-                    title: '밴픽 트랙 수',
-                    icon: 'question',
-                    input: 'range',
-                    inputLabel: (trackType == 'crazy' ? '주의: 크레이지는 아이템전만 가능합니다.\n' : '') + '아래 만큼의 트랙을 랜덤으로 뽑아 밴픽을 진행합니다.',
-                    inputAttributes: {
-                        min: 9,
-                        max: res.tracks.length,
-                        step: 1
-                    },
-                    inputValue: Math.round(9 + (res.tracks.length - 9) / 2),
-                    showCancelButton: true,
-                    confirmButtonText: '확인',
-                    cancelButtonText: '취소',
-                })
-
-                if (res.isConfirmed) {
-                    banpickAmount = res.value
-                }
+            if (res.result == 'error') {
+                throw new Error(res.error)
             }
-            catch (error) {
+
+            if (res.tracks.length < 9) {
                 await Swal.fire({
                     icon: 'warning',
-                    html: error.message,
+                    html: '트랙 수가 밴픽을 진행하기에 부족합니다.',
                     confirmButtonText: '확인',
                 })
+                return
             }
+
+            res = await Swal.fire({
+                title: '밴픽 트랙 수',
+                icon: 'question',
+                input: 'range',
+                inputLabel: (trackType == 'crazy' ? '주의: 크레이지는 아이템전만 가능합니다.\n' : '') + '아래 만큼의 트랙을 랜덤으로 뽑아 밴픽을 진행합니다.',
+                inputAttributes: {
+                    min: 9,
+                    max: res.tracks.length,
+                    step: 1
+                },
+                inputValue: Math.round(9 + (res.tracks.length - 9) / 2),
+                showCancelButton: true,
+                confirmButtonText: '확인',
+                cancelButtonText: '취소',
+            })
+
+            if (res.isConfirmed) {
+                banpickAmount = res.value
+            }
+        }
+        catch (error) {
+            await Swal.fire({
+                icon: 'warning',
+                html: error.message,
+                confirmButtonText: '확인',
+            })
         }
 
         if (banpickAmount) {
@@ -319,7 +372,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 swal.showLoading()
 
                 let res = await postAsync('/game/create', {
-                    mode: mode,
+                    match_type: matchType,
                     track_type: trackType,
                     banpick_amount: banpickAmount,
                 })
@@ -336,7 +389,8 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                     html: `사이트에서 나가셔도 대기방은 없어지지 않습니다. <br> 좌측 상단의 취소를 누르시기 전까지는 <br> 누군가 참가해 게임이 시작될 수 있습니다. <br><br> 초대 코드: <strong>${gameId}</strong>`,
                     showCancelButton: true,
                     confirmButtonText: '복사',
-                    cancelButtonText: '닫기'
+                    cancelButtonText: '닫기',
+                    allowOutsideClick: false,
                 })
 
                 if (res.isConfirmed) {

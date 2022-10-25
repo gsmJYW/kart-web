@@ -42,7 +42,7 @@ try {
 
         for (const round of data.round) {
             const trackImage = document.createElement('img')
-            trackImage.src = `/images/tracks/${round.track_name}.png`
+            trackImage.src = `/images/tracks/${round.track_id}.png`
 
             const roundStatus = document.createElement('p')
 
@@ -63,7 +63,7 @@ try {
             }
             else {
                 roundStatus.innerHTML = '진행 중 <br> &nbsp;'
-                
+
                 for (const element of document.querySelectorAll('.current-round > div > *')) {
                     element.remove()
                 }
@@ -91,6 +91,29 @@ try {
         }
 
         const bottomLeft = document.querySelector('.bottom-left')
+        let matchType
+
+        if (data.game.match_type.includes('speed')) {
+            matchType = '스피드'
+        }
+        else {
+            matchType = '아이템'
+        }
+
+        matchType += ' '
+
+        if (data.game.match_type.includes('Indi')) {
+            matchType += '개인전'
+        }
+        else {
+            matchType += '팀전'
+        }
+
+        if (data.game.match_type.includes('Infinit')) {
+            matchType += ' (무한)'
+        }
+
+        document.querySelector('.match-type').textContent = matchType
 
         if (roundNumber <= 7) {
             bottomLeft.hidden = false
@@ -105,20 +128,6 @@ try {
         }
         else {
             lastFinishedAt = data.game.round_started_at
-        }
-
-        for (const track of document.querySelectorAll('.track-list > div')) {
-            track.addEventListener('click', async (e) => {
-                const res = await postAsync('/banpick', { track_name: track.id })
-
-                if (res.result == 'error') {
-                    await Swal.fire({
-                        icon: 'warning',
-                        html: res.error,
-                        confirmButtonText: '확인',
-                    })
-                }
-            })
         }
 
         finishRound.addEventListener('click', async () => {
