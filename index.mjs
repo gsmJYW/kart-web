@@ -249,7 +249,7 @@ app.post('/tracks', async (req, res) => {
       throw new Error('not authorized')
     }
 
-    const trackList = await getTrackList(req.body.match_type, req.body.track_type)
+    const trackList = await getTrackList(req.body.channel, req.body.track_type)
 
     res.json({
       result: 'OK',
@@ -345,12 +345,12 @@ app.get('/game/event', async (req, res) => {
 
 app.post('/game/create', async (req, res) => {
   try {
-    const matchType = req.body.match_type
+    const channel = req.body.channel
     const trackType = req.body.track_type
     const banpickAmount = req.body.banpick_amount
     const userId = decrypt(req.session.user_id)
 
-    const trackList = await getTrackList(matchType, trackType)
+    const trackList = await getTrackList(channel, trackType)
 
     if (banpickAmount < 9 || banpickAmount > trackList.length) {
       throw new Error(`banpick amount can't be less than 9 or more than track amount`)
@@ -367,7 +367,7 @@ app.post('/game/create', async (req, res) => {
 
     while (!result.affectedRows) {
       gameId = Crypto.randomUUID().slice(0, 6)
-      result = (await pool.query(`INSERT IGNORE INTO game (id, host_id, host_rider_id, opened_at, match_type, track_type, banpick_amount) VALUES ('${gameId}', '${userId}', (SELECT rider_id FROM user WHERE id = '${userId}'), UNIX_TIMESTAMP(NOW()), '${matchType}', '${trackType}', ${banpickAmount})`))[0]
+      result = (await pool.query(`INSERT IGNORE INTO game (id, host_id, host_rider_id, opened_at, channel, track_type, banpick_amount) VALUES ('${gameId}', '${userId}', (SELECT rider_id FROM user WHERE id = '${userId}'), UNIX_TIMESTAMP(NOW()), '${channel}', '${trackType}', ${banpickAmount})`))[0]
     }
 
     for (const gameEvent of gameEventList.filter((gameEvent) => gameEvent.userId == userId)) {
@@ -419,7 +419,7 @@ app.post('/game/join', async (req, res) => {
       throw new Error('호스트와 라이더명이 같습니다. <br> 라이더명을 변경해주세요.')
     }
 
-    const trackList = await getTrackList(game.match_type, game.track_type, game.banpick_amount)
+    const trackList = await getTrackList(game.channel, game.track_type, game.banpick_amount)
     const valueList = [`('${game.id}', '${trackList.pop().id}', 1, true, 1, UNIX_TIMESTAMP(NOW()))`]
 
     for (const track of trackList) {
@@ -641,18 +641,18 @@ function decrypt(str) {
   return Crypto.privateDecrypt(key, Buffer.from(str, 'base64')).toString()
 }
 
-function getTrackList(matchType, trackType, amount = NaN) {
+function getTrackList(channel, trackType, amount = NaN) {
   return new Promise(async (resolve, reject) => {
-    if (!matchType || !trackType) {
+    if (!channel || !trackType) {
       reject(new Error('parameters required'))
     }
 
     let mode
 
-    if (matchType.includes('speed')) {
+    if (channel.includes('speed')) {
       mode = 'speed'
     }
-    else if (matchType.includes('item')) {
+    else if (channel.includes('item')) {
       mode = 'item'
     }
     else {

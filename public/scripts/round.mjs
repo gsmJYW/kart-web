@@ -91,29 +91,29 @@ try {
         }
 
         const bottomLeft = document.querySelector('.bottom-left')
-        let matchType
+        let channel
 
-        if (data.game.match_type.includes('speed')) {
-            matchType = '스피드'
+        if (data.game.channel.includes('speed')) {
+            channel = '스피드'
         }
         else {
-            matchType = '아이템'
+            channel = '아이템'
         }
 
-        matchType += ' '
+        channel += ' '
 
-        if (data.game.match_type.includes('Indi')) {
-            matchType += '개인전'
+        if (data.game.channel.includes('Indi')) {
+            channel += '개인전'
         }
         else {
-            matchType += '팀전'
+            channel += '팀전'
         }
 
-        if (data.game.match_type.includes('Infinit')) {
-            matchType += ' (무한)'
+        if (data.game.channel.includes('Infinit')) {
+            channel += ' (무한)'
         }
 
-        document.querySelector('.match-type').textContent = matchType
+        document.querySelector('.match-type').textContent = channel
 
         if (roundNumber <= 7) {
             bottomLeft.hidden = false

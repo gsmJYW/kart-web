@@ -10,7 +10,7 @@ try {
 
         let title
 
-        if (data.game.match_type.includes('speed')) {
+        if (data.game.channel.includes('speed')) {
             title = '스피드'
         }
         else {
@@ -19,14 +19,14 @@ try {
 
         title += ' '
 
-        if (data.game.match_type.includes('Indi')) {
+        if (data.game.channel.includes('Indi')) {
             title += '개인전'
         }
         else {
             title += '팀전'
         }
 
-        if (data.game.match_type.includes('Infinit')) {
+        if (data.game.channel.includes('Infinit')) {
             title += ' (무한)'
         }
 
@@ -247,7 +247,7 @@ document.querySelector('.join').addEventListener('click', async () => {
 for (const random of document.querySelectorAll('.track-type-list > img')) {
     random.addEventListener('click', async (e) => {
         const trackType = e.target.id
-        let matchType = 'item'
+        let channel = 'item'
 
         if (trackType != 'crazy') {
             const res = await Swal.fire({
@@ -267,7 +267,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 return
             }
 
-            matchType = res.value
+            channel = res.value
         }
 
         const res = await Swal.fire({
@@ -287,9 +287,9 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             return
         }
 
-        matchType += res.value
+        channel += res.value
 
-        if (matchType.includes('speed')) {
+        if (channel.includes('speed')) {
             const res = await Swal.fire({
                 html: `<img src="/images/randoms/${trackType}.png" />`,
                 input: 'radio',
@@ -304,7 +304,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             })
 
             if (res.value == 'Infinit') {
-                matchType += res.value
+                channel += res.value
             }
         }
 
@@ -316,7 +316,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
 
         try {
             let res = await postAsync('/tracks', {
-                match_type: matchType,
+                channel: channel,
                 track_type: trackType,
             })
 
@@ -372,7 +372,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 swal.showLoading()
 
                 let res = await postAsync('/game/create', {
-                    match_type: matchType,
+                    channel: channel,
                     track_type: trackType,
                     banpick_amount: banpickAmount,
                 })

@@ -56,8 +56,6 @@ try {
             opponent.textContent = opponentRiderName
         }
 
-        console.log(data.banpick)
-
         for (const banpick of data.banpick) {
             const trackImage = document.createElement('img')
             trackImage.src = `/images/tracks/${banpick.track_id}.png`
