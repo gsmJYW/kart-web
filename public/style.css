@@ -22,10 +22,23 @@ div.bg {
     margin: 15px;
 }
 
-.top-right>.btn {
-    padding: 1vmin 2.5vmin !important;
-    font-size: 1.5vmin !important;
-    border-radius: 0 !important;
+.profile {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 10vmin;
+    display: flex;
+    flex-direction: row;
+    cursor: pointer;
+    padding: 0.1vmin;
+    margin-bottom: 15px;
+}
+
+.dropdown-menu {
+    display: block !important;
+}
+
+.dropdown-menu-right {
+    right: 15px;
+    left: auto;
 }
 
 .game-card {
@@ -42,7 +55,7 @@ div.bg {
     font-size: 1.4vmin;
 }
 
-.game-card>div>button {
+.game-card>div>div>button {
     font-size: 1.4vmin;
 }
 
@@ -198,8 +211,27 @@ div.bg {
     margin: 2vmin;
 }
 
-.finish-round {
+.bottom-right>.btn {
     padding: 2.5vmin 4vmin !important;
     font-size: 2vmin !important;
     border-radius: 0 !important;
+}
+
+.avatar {
+    border-radius: 50%;
+    width: 4vmin;
+    height: 4vmin;
+}
+
+.name {
+    font-size: 1.8vmin;
+    margin: auto;
+    padding-left: 1vmin;
+    padding-right: 1.5vmin;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }

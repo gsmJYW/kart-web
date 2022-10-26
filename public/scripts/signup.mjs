@@ -9,7 +9,7 @@ const res = await Swal.fire({
     allowOutsideClick: false,
 })
 
-const riderName = res.value
+const riderName = res.value.trim()
 
 if (res.isConfirmed) {
     try {

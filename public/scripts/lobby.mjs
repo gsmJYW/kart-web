@@ -190,6 +190,49 @@ function postAsync(url, params = {}) {
     })
 }
 
+document.querySelector('.stat').onclick = async() => {
+    await Swal.fire({
+        title: '공사중',
+        html: '아직 개발 중이에요!',
+        confirmButtonText: '확인',
+    })
+}
+
+document.querySelector('.change-rider-name').onclick = async () => {
+    const res = await Swal.fire({
+        title: '라이더명 입력',
+        input: 'text',
+        showCancelButton: true,
+        confirmButtonText: '확인',
+        cancelButtonText: '취소',
+    })
+
+    if (res.isConfirmed) {
+        const riderName = res.value.trim()
+
+        try {
+            const res = await postAsync('/rider/name/update', { rider_name: riderName })
+
+            if (res.result == 'error') {
+                throw new Error(res.error)
+            }
+
+            await Swal.fire({
+                icon: 'success',
+                html: '라이더명을 변경 하였습니다.',
+                confirmButtonText: '확인',
+            })
+        }
+        catch (error) {
+            await Swal.fire({
+                icon: 'warning',
+                html: error.message,
+                confirmButtonText: '확인',
+            })
+        }
+    }
+}
+
 document.querySelector('.signout').onclick = async () => {
     const res = await Swal.fire({
         icon: 'warning',
@@ -212,7 +255,6 @@ document.querySelector('.join').onclick = async () => {
         showCancelButton: true,
         confirmButtonText: '확인',
         cancelButtonText: '취소',
-        allowOutsideClick: false,
     })
 
     if (res.isConfirmed) {
@@ -406,4 +448,31 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             }
         }
     }
+}
+
+try {
+    const topRight = document.querySelector('.top-right')
+    const avatar = document.querySelector('.avatar')
+
+    const res = await postAsync('/user')
+
+    if (res.result == 'error') {
+        topRight.hidden = true
+        throw new Error(res.error)
+    }
+
+    topRight.hidden = false
+    document.querySelector('.name').textContent = res.user.name
+
+    if (res.user.avatar) {
+        avatar.src = `https://cdn.discordapp.com/avatars/${res.user.id}/${res.user.avatar}.png?size=2048`
+    }
+
+    document.querySelector('.profile').onclick = () => {
+        const dropdown = document.querySelector('.top-right > .dropdown-menu')
+        dropdown.hidden = !dropdown.hidden
+    }
+}
+catch (error) {
+
 }

@@ -151,13 +151,13 @@ app.post('/signup', async (req, res) => {
   }
 })
 
-app.get('/user', async (req, res) => {
+app.post('/user', async (req, res) => {
   try {
     if (!req.session.access_token) {
       throw new Error('not authorized')
     }
 
-    const user = (await pool.query(`SELECT * FROM user WHERE id = ${decrypt(req.session.user_id)}`))[0][0]
+    const user = (await pool.query(`SELECT CAST(id AS CHAR) AS id, name, avatar FROM user WHERE id = ${decrypt(req.session.user_id)}`))[0][0]
 
     res.json({
       result: 'OK',
@@ -225,6 +225,38 @@ app.post('/rider/name', async (req, res) => {
     res.json({
       result: 'OK',
       rider_name: rider.name,
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      error: error.message,
+    })
+  }
+})
+
+app.post('/rider/name/update', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('not authorized')
+    }
+
+    const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/nickname/${req.body.rider_name}`, {
+      headers: {
+        Authorization: kartApiKey,
+      },
+    })
+
+    const rider = await result.json()
+
+    if (!rider.accessId) {
+      throw new Error('라이더를 찾지 못했습니다.')
+    }
+
+    await pool.query(`UPDATE user SET rider_id = ${rider.accessId} WHERE id = ${decrypt(req.session.user_id)}`)
+
+    res.json({
+      result: 'OK',
     })
   }
   catch (error) {
@@ -545,7 +577,7 @@ app.post('/round/finish', async (req, res) => {
     if ((round.host_id == userId && round.host_ready) || (round.opponent_id && round.opponent_ready)) {
       throw new Error('이미 라운드 완료를 하셨습니다.')
     }
-    
+
     const match = await getMatch(userId, round)
 
     if (!match) {
