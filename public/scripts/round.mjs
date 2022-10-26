@@ -28,8 +28,8 @@ try {
 
         roundNumber = Math.max(...data.round.map(round => round.number))
 
-        if (roundNumber >= 7 && data.round.find((round) => round.number == roundNumber).finished_at) {
-            roundNumber++
+        if (data.game.closed_at) {
+            roundNumber = Infinity
         }
 
         for (const roundElement of document.querySelectorAll('.round-list > div > div, .round-list > div > p:nth-child(3), .round-list > div > img')) {
@@ -44,8 +44,11 @@ try {
         document.querySelector('.host').textContent = hostRider.rider_name
         document.querySelector('.opponent').textContent = opponentRider.rider_name
 
-        document.querySelector('.host-score').textContent = data.round.filter((round) => Number(round.host_record) < Number(round.opponent_record)).length
-        document.querySelector('.opponent-score').textContent = data.round.filter((round) => Number(round.host_record) > Number(round.opponent_record)).length
+        const hostScore = data.round.filter((round) => Number(round.host_record) < Number(round.opponent_record)).length
+        const opponentScore = data.round.filter((round) => Number(round.host_record) > Number(round.opponent_record)).length
+
+        document.querySelector('.host-score').textContent = hostScore
+        document.querySelector('.opponent-score').textContent = opponentScore
 
         const finishRound = document.querySelector('.finish-round')
         const currentRound = document.querySelector('.current-round > div')

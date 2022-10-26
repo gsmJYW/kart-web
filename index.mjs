@@ -157,7 +157,7 @@ app.post('/user', async (req, res) => {
       throw new Error('not authorized')
     }
 
-    const user = (await pool.query(`SELECT CAST(id AS CHAR) AS id, name, avatar FROM user WHERE id = ${decrypt(req.session.user_id)}`))[0][0]
+    const user = (await pool.query(`SELECT CAST(id AS CHAR) AS id, name, discriminator, avatar FROM user WHERE id = ${decrypt(req.session.user_id)}`))[0][0]
 
     res.json({
       result: 'OK',
@@ -732,7 +732,7 @@ async function sendGameEvent(path, args = { eventId: null, userId: null, gameId:
 
 async function getTrackList(channel, trackType, amount = NaN) {
   if (!channel || !trackType) {
-    reject(new Error('parameters required'))
+    throw new Error('parameters required')
   }
 
   let mode
@@ -744,18 +744,18 @@ async function getTrackList(channel, trackType, amount = NaN) {
     mode = 'item'
   }
   else {
-    reject(new Error('invalid match type'))
+    throw new Error('invalid match type')
   }
 
   if (!['very_easy', 'easy', 'normal', 'hard', 'very_hard', 'all', 'league', 'new', 'reverse', 'crazy'].some((element) => trackType == element)) {
-    reject(new Error('invalid trackType'))
+    throw new Error('invalid trackType')
   }
 
   const conditionList = []
 
-  if (mode = 'speed') {
+  if (mode == 'speed') {
     if (trackType == 'crazy') {
-      reject(new Error('speed mode is not available on crazy random'))
+      throw new Error('speed mode is not available on crazy random')
     }
 
     conditionList.push('crazy = false')
@@ -860,7 +860,9 @@ let retireTimerList = []
 async function setRetireTimer(gameId, round) {
   retireTimerList = retireTimerList.filter((retireTimer) => retireTimer.gameId != gameId)
 
-  if (round > 7) {
+  const result = (await pool.query(`SELECT GREATEST(SUM(CASE WHEN host_record > opponent_record THEN 1 ELSE 0 END), SUM(CASE WHEN host_record < opponent_record THEN 1 ELSE 0 END)) AS max_score FROM round WHERE game_id = '${gameId}'`))[0][0]
+
+  if (round > 7 || result.max_score >= 4) {
     await pool.query(`UPDATE game SET closed_at = UNIX_TIMESTAMP(NOW()) WHERE id = '${gameId}'`)
     await sendGameEvent(['lobby', 'banpick', 'round'], { gameId: gameId })
     return
