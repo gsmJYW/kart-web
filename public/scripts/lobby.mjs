@@ -1,5 +1,5 @@
 try {
-    const eventSource = new EventSource('/game/event')
+    const eventSource = new EventSource('/game/event?path=lobby')
     eventSource.addEventListener('game_update', async (e) => {
         const data = JSON.parse(e.data)
 
@@ -88,21 +88,21 @@ try {
             }
 
             document.querySelector('.game-started > div > .game-card-subtitle').textContent = subtitle
-            document.querySelector('.open-game').addEventListener('click', () => {
+            document.querySelector('.open-game').onclick = () => {
                 if (data.game.round_started_at) {
                     window.location.href = '/round'
                 }
                 else {
                     window.location.href = '/banpick'
                 }
-            })
+            }
         }
         else {
             gameStarted.hidden = true
             gameWaiting.hidden = false
 
             document.querySelector('.banpick-amount').textContent = data.game.banpick_amount
-            document.querySelector('.show-game-id').addEventListener('click', async () => {
+            document.querySelector('.show-game-id').onclick = async () => {
                 const res = await Swal.fire({
                     title: `초대 코드`,
                     html: data.game.id,
@@ -115,8 +115,8 @@ try {
                 if (res.isConfirmed) {
                     await navigator.clipboard.writeText(data.game.id)
                 }
-            })
-            document.querySelector('.close-game').addEventListener('click', async () => {
+            }
+            document.querySelector('.close-game').onclick = async () => {
                 try {
                     const res = await postAsync('/game/close')
 
@@ -131,7 +131,7 @@ try {
                         confirmButtonText: '확인',
                     })
                 }
-            })
+            }
         }
 
         for (const gameCardTitle of document.querySelectorAll('.game-card-title')) {
@@ -190,7 +190,7 @@ function postAsync(url, params = {}) {
     })
 }
 
-document.querySelector('.signout').addEventListener('click', async () => {
+document.querySelector('.signout').onclick = async () => {
     const res = await Swal.fire({
         icon: 'warning',
         html: '로그아웃 하여도 대기 중이거나 <br> 진행 중인 게임은 취소되지 않습니다.',
@@ -203,9 +203,9 @@ document.querySelector('.signout').addEventListener('click', async () => {
         await fetch('/signout')
         location.reload()
     }
-})
+}
 
-document.querySelector('.join').addEventListener('click', async () => {
+document.querySelector('.join').onclick = async () => {
     const res = await Swal.fire({
         title: '초대 코드 입력',
         input: 'text',
@@ -242,10 +242,10 @@ document.querySelector('.join').addEventListener('click', async () => {
             })
         }
     }
-})
+}
 
 for (const random of document.querySelectorAll('.track-type-list > img')) {
-    random.addEventListener('click', async (e) => {
+    random.onclick = async (e) => {
         const trackType = e.target.id
         let channel = 'item'
 
@@ -334,8 +334,8 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             }
 
             res = await Swal.fire({
-                title: '밴픽 트랙 수',
                 icon: 'question',
+                title: '밴픽 트랙 수',
                 input: 'range',
                 inputLabel: (trackType == 'crazy' ? '주의: 크레이지는 아이템전만 가능합니다.\n' : '') + '아래 만큼의 트랙을 랜덤으로 뽑아 밴픽을 진행합니다.',
                 inputAttributes: {
@@ -405,5 +405,5 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 })
             }
         }
-    })
+    }
 }

@@ -17,8 +17,10 @@ let order
 let interval
 
 try {
-    const eventSource = new EventSource('/game/event')
+    const eventSource = new EventSource('/game/event?path=banpick')
     eventSource.addEventListener('game_update', async (e) => {
+        Swal.close()
+
         const data = JSON.parse(e.data)
 
         let res = await postAsync('/rider/name', { rider_id: data.game.host_rider_id })
@@ -133,7 +135,7 @@ try {
         lastBanpickedAt = Math.max(...data.banpick.map(banpick => banpick.banpicked_at))
 
         for (const track of document.querySelectorAll('.track-list > div')) {
-            track.addEventListener('click', async () => {
+            track.onclick = async () => {
                 try {
                     const res = await postAsync('/banpick', { track_id: track.id })
 
@@ -148,22 +150,22 @@ try {
                         confirmButtonText: '확인',
                     })
                 }
-            })
-        }
+            }
+}
 
         if (data.game.round_started_at) {
-            const res = await Swal.fire({
-                title: '게임 시작',
-                html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
-                showCancelButton: true,
-                confirmButtonText: '확인',
-                cancelButtonText: '취소',
-            })
+    const res = await Swal.fire({
+        title: '게임 시작',
+        html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
+        showCancelButton: true,
+        confirmButtonText: '확인',
+        cancelButtonText: '취소',
+    })
 
-            if (res.isConfirmed) {
-                location.href = '/round'
-            }
-        }
+    if (res.isConfirmed) {
+        location.href = '/round'
+    }
+}
     })
 }
 catch (error) {

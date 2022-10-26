@@ -17,14 +17,20 @@ let roundNumber
 let interval
 
 try {
-    const eventSource = new EventSource('/game/event')
+    const eventSource = new EventSource('/game/event?path=round')
     eventSource.addEventListener('game_update', async (e) => {
+        Swal.close()
+
         const data = JSON.parse(e.data)
 
         const hostRider = await postAsync('/rider/name', { rider_id: data.game.host_rider_id })
         const opponentRider = await postAsync('/rider/name', { rider_id: data.game.opponent_rider_id })
 
         roundNumber = Math.max(...data.round.map(round => round.number))
+
+        if (roundNumber >= 7 && data.round.find((round) => round.number == roundNumber).finished_at) {
+            roundNumber++
+        }
 
         for (const roundElement of document.querySelectorAll('.round-list > div > div, .round-list > div > p:nth-child(3), .round-list > div > img')) {
             roundElement.remove()
@@ -35,10 +41,19 @@ try {
             roundDiv.appendChild(div)
         }
 
-        document.querySelector('.host-score').textContent = data.round.filter((round) => round.host_record > round.opponent_record).length
-        document.querySelector('.opponent-score').textContent = data.round.filter((round) => round.opponent_record > round.host_record).length
+        document.querySelector('.host').textContent = hostRider.rider_name
+        document.querySelector('.opponent').textContent = opponentRider.rider_name
+
+        document.querySelector('.host-score').textContent = data.round.filter((round) => Number(round.host_record) < Number (round.opponent_record)).length
+        document.querySelector('.opponent-score').textContent = data.round.filter((round) => Number(round.host_record) > Number (round.opponent_record)).length
 
         const finishRound = document.querySelector('.finish-round')
+        const currentRound = document.querySelector('.current-round > div')
+
+        if (roundNumber > 7) {
+            finishRound.hidden = true
+            currentRound.hidden = true
+        }
 
         for (const round of data.round) {
             const trackImage = document.createElement('img')
@@ -47,16 +62,16 @@ try {
             const roundStatus = document.createElement('p')
 
             if (roundNumber > round.number) {
-                const hostRecord = `${hostRider.rider_name}: ${round.host_record < 999 ? round.host_record : 'RETIRE'}`
+                let hostRecord = `${hostRider.rider_name}: ${Number(round.host_record) < 999 ? Number(round.host_record) : 'RETIRE'}`
 
-                if (round.host_record > round.opponent_record) {
+                if (Number(round.host_record) < Number(round.opponent_record)) {
                     hostRecord = `<strong>${hostRecord}</strong>`
                 }
 
-                const opponentRecord = `${opponentRider.rider_name}: ${round.opponent_record < 999 ? round.opponent_record : 'RETIRE'}`
+                let opponentRecord = `${opponentRider.rider_name}: ${Number(round.opponent_record) < 999 ? Number(round.opponent_record) : 'RETIRE'}`
 
-                if (round.opponent_record > round.host_record) {
-                    hostRecord = `<strong>${opponentRecord}</strong>`
+                if (Number(round.opponent_record) < Number(round.host_record)) {
+                    opponentRecord = `<strong>${opponentRecord}</strong>`
                 }
 
                 roundStatus.innerHTML = `${hostRecord} <br> ${opponentRecord}`
@@ -74,13 +89,38 @@ try {
                 const trackName = document.createElement('p')
                 trackName.textContent = round.track_name
 
-                const currentRound = document.querySelector('.current-round > div')
-
                 currentRound.appendChild(currentRoundNumber)
                 currentRound.appendChild(trackImage.cloneNode())
                 currentRound.appendChild(trackName)
 
                 finishRound.disabled = (data.game.host_id == data.user_id && round.host_ready) || (data.game.opponent_id == data.user_id && round.opponent_ready)
+
+                if (!finishRound.disabled && (round.host_ready || round.opponent_ready)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        html: '상대가 매치 기록이 없는 상태에서 라운드를 완료했어요. <br> 리타이어로 처리하고 라운드를 넘기는 것에 동의하십니까?',
+                        showCancelButton: true,
+                        confirmButtonText: '확인',
+                        cancelButtonText: '취소',
+                    }).then(async (res) => {
+                        if (res.isConfirmed) {
+                            try {
+                                const res = await postAsync('/round/finish-anyway')
+
+                                if (res.result == 'error') {
+                                    throw new Error(res.error)
+                                }
+                            }
+                            catch (error) {
+                                await Swal.fire({
+                                    icon: 'warning',
+                                    html: error.message,
+                                    confirmButtonText: '확인',
+                                })
+                            }
+                        }
+                    })
+                }
             }
 
             const roundDiv = document.querySelector(`.round-list > div:nth-child(${round.number})`)
@@ -130,21 +170,37 @@ try {
             lastFinishedAt = data.game.round_started_at
         }
 
-        finishRound.addEventListener('click', async () => {
+        finishRound.onclick = async () => {
             try {
-                let res = await Swal.fire({
-                    icon: 'warning',
-                    html: '멀티플레이를 진행하지 않고 다음 라운드로 <br> 넘어갈 경우 리타이어로 처리됩니다. <br> 정말 완료 하시겠습니까?',
-                    showCancelButton: true,
-                    confirmButtonText: '확인',
-                    cancelButtonText: '취소',
-                })
+                let res = await postAsync('/round/finish')
 
-                if (res.isConfirmed) {
-                    res = await postAsync('/round/finish')
+                if (res.result == 'error') {
+                    throw new Error(res.error)
+                }
+                else if (res.result == 'match not found') {
+                    const res = await Swal.fire({
+                        icon: 'warning',
+                        html: '매치 기록을 찾지 못했습니다. <br> 인게임 시상식이 끝나고 최대 20초까지 기다려보세요. <br> 이대로 완료하고 리타이어 처리를 원하십니까?',
+                        showCancelButton: true,
+                        confirmButtonText: '확인',
+                        cancelButtonText: '취소',
+                        showOutsideClick: false,
+                    })
 
-                    if (res.result == 'error') {
-                        throw new Error(res.error)
+                    if (res.isConfirmed) {
+                        const res = await postAsync('/round/finish-anyway')
+
+                        if (res.result == 'error') {
+                            throw new Error(res.error)
+                        }
+                        else if (res.result == 'waiting for the other') {
+                            await Swal.fire({
+                                icon: 'success',
+                                html: '상대가 라운드를 완료하기를 기다리고 있어요.',
+                                confirmButtonText: '확인',
+                                showOutsideClick: false,
+                            })
+                        }
                     }
                 }
             }
@@ -155,7 +211,7 @@ try {
                     confirmButtonText: '확인',
                 })
             }
-        })
+        }
     })
 }
 catch (error) {
