@@ -34,11 +34,12 @@ div.bg {
 
 .dropdown-menu {
     display: block !important;
-}
-
-.dropdown-menu-right {
     right: 15px;
     left: auto;
+}
+
+.dropdown-item {
+    font-size: 1.5vmin;
 }
 
 .game-card {

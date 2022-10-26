@@ -44,8 +44,8 @@ try {
         document.querySelector('.host').textContent = hostRider.rider_name
         document.querySelector('.opponent').textContent = opponentRider.rider_name
 
-        document.querySelector('.host-score').textContent = data.round.filter((round) => Number(round.host_record) < Number (round.opponent_record)).length
-        document.querySelector('.opponent-score').textContent = data.round.filter((round) => Number(round.host_record) > Number (round.opponent_record)).length
+        document.querySelector('.host-score').textContent = data.round.filter((round) => Number(round.host_record) < Number(round.opponent_record)).length
+        document.querySelector('.opponent-score').textContent = data.round.filter((round) => Number(round.host_record) > Number(round.opponent_record)).length
 
         const finishRound = document.querySelector('.finish-round')
         const currentRound = document.querySelector('.current-round > div')
@@ -62,13 +62,13 @@ try {
             const roundStatus = document.createElement('p')
 
             if (roundNumber > round.number) {
-                let hostRecord = `${hostRider.rider_name}: ${Number(round.host_record) < 999 ? Number(round.host_record) : 'RETIRE'}`
+                let hostRecord = `${hostRider.rider_name}: ${formatRecord(Number(round.host_record))}`
 
                 if (Number(round.host_record) < Number(round.opponent_record)) {
                     hostRecord = `<strong>${hostRecord}</strong>`
                 }
 
-                let opponentRecord = `${opponentRider.rider_name}: ${Number(round.opponent_record) < 999 ? Number(round.opponent_record) : 'RETIRE'}`
+                let opponentRecord = `${opponentRider.rider_name}: ${formatRecord(Number(round.opponent_record))}`
 
                 if (Number(round.opponent_record) < Number(round.host_record)) {
                     opponentRecord = `<strong>${opponentRecord}</strong>`
@@ -180,7 +180,7 @@ try {
                 else if (res.result == 'match not found') {
                     const res = await Swal.fire({
                         icon: 'warning',
-                        html: '매치 기록을 찾지 못했습니다. <br> 인게임 시상식이 끝나고 최대 20초까지 기다려보세요. <br> 이대로 완료하고 리타이어 처리를 원하십니까?',
+                        html: '매치 기록을 찾지 못했습니다. <br> 인게임 시상식이 끝나고 최대 20초까지 걸릴 수 있습니다. <br> 이대로 완료하고 리타이어 처리를 원하십니까?',
                         showCancelButton: true,
                         confirmButtonText: '확인',
                         cancelButtonText: '취소',
@@ -234,3 +234,11 @@ interval = setInterval(async () => {
         }
     }
 }, 1000)
+
+function formatRecord(record) {
+    if (record > 999) {
+        return 'RETIRE'
+    }
+
+    return `${Math.floor(record / 60)}:${Math.floor(record % 60).toString().padStart(2, '0')}:${(record * 1000 % 1000).toString().padStart(3, '0')}`
+}
