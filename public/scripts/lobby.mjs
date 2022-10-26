@@ -167,13 +167,7 @@ try {
     })
 }
 catch (error) {
-    await Swal.fire({
-        icon: 'error',
-        html: error.message,
-        confirmButtonText: '새로고침',
-    })
-
-    location.reload()
+    await showError()
 }
 
 function postAsync(url, params = {}) {
@@ -190,7 +184,7 @@ function postAsync(url, params = {}) {
     })
 }
 
-document.querySelector('.stat').onclick = async() => {
+document.querySelector('.stat').onclick = async () => {
     await Swal.fire({
         title: '공사중',
         html: '아직 개발 중이에요!',
@@ -345,13 +339,12 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 cancelButtonText: '취소',
             })
 
-            if (res.value == 'Infinit') {
+            if (!res.isConfirmed) {
+                return
+            }
+            else if (res.value == 'Infinit') {
                 channel += res.value
             }
-        }
-
-        if (!res.isConfirmed) {
-            return
         }
 
         let banpickAmount = 0
@@ -457,15 +450,40 @@ try {
     const res = await postAsync('/user')
 
     if (res.result == 'error') {
-        topRight.hidden = true
         throw new Error(res.error)
     }
 
-    topRight.hidden = false
     document.querySelector('.name').textContent = res.user.name
 
     if (res.user.avatar) {
         avatar.src = `https://cdn.discordapp.com/avatars/${res.user.id}/${res.user.avatar}.png?size=2048`
+    }
+    else {
+        let defaultAvatar
+
+        switch (res.user.discriminator % 5) {
+            case 0:
+                defaultAvatar = 'blue'
+                break
+
+            case 1:
+                defaultAvatar = 'grey'
+                break
+
+            case 2:
+                defaultAvatar = 'green'
+                break
+
+            case 3:
+                defaultAvatar = 'orange'
+                break
+
+            case 4:
+                defaultAvatar = 'red'
+                break
+        }
+
+        avatar.src = `/images/discord/${defaultAvatar}.png`
     }
 
     document.querySelector('.profile').onclick = () => {
@@ -474,5 +492,24 @@ try {
     }
 }
 catch (error) {
+    await showError()
+}
 
+async function showError() {
+    const res = await Swal.fire({
+        icon: 'error',
+        html: error.message,
+        showCancelButton: true,
+        confirmButtonText: '새로고침',
+        cancelButtonText: '로그아웃',
+        showOutsideClick: false,
+    })
+
+    if (res.isConfirmed) {
+        location.reload()
+    }
+    else {
+        await fetch('/signout')
+        location.reload()
+    }
 }
