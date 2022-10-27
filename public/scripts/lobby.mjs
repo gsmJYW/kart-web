@@ -126,7 +126,8 @@ try {
                 }
                 catch (error) {
                     await Swal.fire({
-                        icon: 'warning',
+                        icon: 'error',
+                        title: '오류',
                         html: error.message,
                         confirmButtonText: '확인',
                     })
@@ -167,7 +168,7 @@ try {
     })
 }
 catch (error) {
-    await showError()
+    await showError(error)
 }
 
 function postAsync(url, params = {}) {
@@ -219,7 +220,8 @@ document.querySelector('.change-rider-name').onclick = async () => {
         }
         catch (error) {
             await Swal.fire({
-                icon: 'warning',
+                icon: 'error',
+                title: '오류',
                 html: error.message,
                 confirmButtonText: '확인',
             })
@@ -272,7 +274,8 @@ document.querySelector('.join').onclick = async () => {
         }
         catch (error) {
             await Swal.fire({
-                icon: 'warning',
+                icon: 'error',
+                title: '오류',
                 html: error.message,
                 confirmButtonText: '확인',
             })
@@ -390,7 +393,8 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
         }
         catch (error) {
             await Swal.fire({
-                icon: 'warning',
+                icon: 'error',
+                title: '오류',
                 html: error.message,
                 confirmButtonText: '확인',
             })
@@ -434,7 +438,8 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             }
             catch (error) {
                 await Swal.fire({
-                    icon: 'warning',
+                    icon: 'error',
+                    title: '오류',
                     html: error.message,
                     confirmButtonText: '확인',
                 })
@@ -447,7 +452,7 @@ try {
     const topRight = document.querySelector('.top-right')
     const avatar = document.querySelector('.avatar')
 
-    const res = await postAsync('/user')
+    let res = await postAsync('/user')
 
     if (res.result == 'error') {
         throw new Error(res.error)
@@ -490,14 +495,30 @@ try {
         const dropdown = document.querySelector('.top-right > .dropdown-menu')
         dropdown.hidden = !dropdown.hidden
     }
+
+    res = await postAsync('/notification') 
+
+    if (res.result == 'error') {
+        throw new Error(res.error)
+    }
+
+    for (const notification of res.notification) (
+        await Swal.fire({
+            icon: 'info',
+            title: '알림',
+            html: notification.content,
+            confirmButtonText: '확인',
+        })
+    )
 }
 catch (error) {
-    await showError()
+    await showError(error)
 }
 
-async function showError() {
+async function showError(error) {
     const res = await Swal.fire({
         icon: 'error',
+        title: '오류',
         html: error.message,
         showCancelButton: true,
         confirmButtonText: '새로고침',
