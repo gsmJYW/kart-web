@@ -36,6 +36,7 @@ div.bg {
     display: block !important;
     right: 15px;
     left: auto;
+    width: 14vmin !important;
 }
 
 .dropdown-item {
@@ -88,7 +89,7 @@ div.bg {
 .banpick-list {
     display: flex;
     flex-wrap: wrap;
-    padding: 5vmin 0vw 2vmin 0vw;
+    padding: 0vmin 0vw 2vmin 0vw;
     justify-content: center;
 }
 
@@ -235,4 +236,14 @@ div.bg {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+
+.api-sign {
+    font-size: 1.8vmin;
+    position: fixed;
+    left: 50%;
+    bottom: 3vmin;
+    transform: translate(-50%, -50%);
+    margin: 0 auto;
+    color: rgba(255, 255, 255, 0.5);
 }
