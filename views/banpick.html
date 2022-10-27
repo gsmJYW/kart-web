@@ -17,10 +17,9 @@
     </video>
     <div class="bg"></div>
 
-    <div class="turn" hidden="true">
-        <strong class="turn-rider"></strong>님이 <strong class="ban-or-pick"></strong>할 차례<br>
-        <strong class="remain-time"></strong>초 후 무작위로 선정
-    </div>
+    <p class="score">
+        <strong class="host"></strong> vs <strong class="opponent"></strong>
+    </p>
 
     <div class="banpick-list">
         <div>
@@ -52,8 +51,11 @@
         </div>
     </div>
 
-    <div class="track-list">
+    <div class="track-list"></div>
 
+    <div class="turn" hidden="true">
+        <strong class="turn-rider"></strong>님이 <strong class="ban-or-pick"></strong>할 차례<br>
+        <strong class="remain-time"></strong>초 후 무작위로 선정
     </div>
 
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
