@@ -31,7 +31,8 @@ if (res.isConfirmed) {
     }
     catch (error) {
         await Swal.fire({
-            icon: 'warning',
+            icon: 'error',
+            title: '오류',
             html: error.message,
             confirmButtonText: '확인',
         })

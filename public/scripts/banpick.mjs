@@ -145,32 +145,34 @@ try {
                 }
                 catch (error) {
                     await Swal.fire({
-                        icon: 'warning',
+                        icon: 'error',
+                        title: '오류',
                         html: error.message,
                         confirmButtonText: '확인',
                     })
                 }
             }
-}
+        }
 
         if (data.game.round_started_at) {
-    const res = await Swal.fire({
-        title: '게임 시작',
-        html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
-        showCancelButton: true,
-        confirmButtonText: '확인',
-        cancelButtonText: '취소',
-    })
+            const res = await Swal.fire({
+                title: '게임 시작',
+                html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
+                showCancelButton: true,
+                confirmButtonText: '확인',
+                cancelButtonText: '취소',
+            })
 
-    if (res.isConfirmed) {
-        location.href = '/round'
-    }
-}
+            if (res.isConfirmed) {
+                location.href = '/round'
+            }
+        }
     })
 }
 catch (error) {
     await Swal.fire({
         icon: 'error',
+        title: '오류',
         html: error.message,
         confirmButtonText: '새로고침',
     })

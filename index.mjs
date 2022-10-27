@@ -172,6 +172,27 @@ app.post('/user', async (req, res) => {
   }
 })
 
+app.post('/notification', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('not authorized')
+    }
+
+    const notificationList = (await pool.query(`SELECT * FROM notification ORDER BY created_at`))[0]
+
+    res.json({
+      result: 'OK',
+      notification: notificationList,
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      error: error.message,
+    })
+  }
+})
+
 app.get('/discord/oauth', async (req, res) => {
   try {
     const code = req.query.code
