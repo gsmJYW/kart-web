@@ -496,20 +496,30 @@ try {
         dropdown.hidden = !dropdown.hidden
     }
 
-    res = await postAsync('/notification') 
+    res = await postAsync('/notification')
 
     if (res.result == 'error') {
         throw new Error(res.error)
     }
 
-    for (const notification of res.notification) (
-        await Swal.fire({
+    for (const notification of res.notification) {
+        const res = await Swal.fire({
             icon: 'info',
             title: '알림',
             html: notification.content,
-            confirmButtonText: '확인',
+            showCancelButton: true,
+            confirmButtonText: '다신 보지 않기',
+            cancelButtonText: '확인',
         })
-    )
+
+        if (res.isConfirmed) {
+            const res = await postAsync('/notification/hide', { notification_id: notification.id })
+
+            if (res.result == 'error') {
+                throw new Error(res.error)
+            }
+        }
+    }
 }
 catch (error) {
     await showError(error)
