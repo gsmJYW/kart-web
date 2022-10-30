@@ -1,10 +1,22 @@
 try {
     const eventSource = new EventSource('/game/event?path=lobby')
     eventSource.addEventListener('game_update', async (e) => {
+        Swal.close()
+        
         const data = JSON.parse(e.data)
 
-        if (!data.game) {
-            document.querySelector('.game-card').hidden = true
+        const gameStarted = document.querySelector('.game-started')
+        const gameWaiting = document.querySelector('.game-waiting')
+
+        gameStarted.hidden = true
+        gameWaiting.hidden = true
+
+        if (data.game) {
+            if (data.game.closed_at) {
+                return
+            }
+        }
+        else {
             return
         }
 
@@ -74,9 +86,6 @@ try {
                 break
         }
 
-        const gameStarted = document.querySelector('.game-started')
-        const gameWaiting = document.querySelector('.game-waiting')
-
         if (data.game.opponent_id) {
             gameStarted.hidden = false
             gameWaiting.hidden = true
@@ -94,6 +103,30 @@ try {
                 }
                 else {
                     window.location.href = '/banpick'
+                }
+            }
+            document.querySelector('.quit-game').onclick = async () => {
+                try {
+                    const res = await postAsync('/game/quit')
+
+                    if (res.result == 'error') {
+                        throw new Error(res.message)
+                    }
+                    else if (res.result == 'warning') {
+                        await Swal.fire({
+                            icon: 'warning',
+                            html: res.message,
+                            confirmButtonText: '확인',
+                        })
+                    }
+                }
+                catch (error) {
+                    await Swal.fire({
+                        icon: 'error',
+                        title: '오류',
+                        html: error.message,
+                        confirmButtonText: '확인',
+                    })
                 }
             }
         }
@@ -121,7 +154,14 @@ try {
                     const res = await postAsync('/game/close')
 
                     if (res.result == 'error') {
-                        throw new Error(res.error)
+                        throw new Error(res.message)
+                    }
+                    else if (res.result == 'warning') {
+                        await Swal.fire({
+                            icon: 'warning',
+                            html: res.message,
+                            confirmButtonText: '확인',
+                        })
                     }
                 }
                 catch (error) {
@@ -209,7 +249,15 @@ document.querySelector('.change-rider-name').onclick = async () => {
             const res = await postAsync('/rider/name/update', { rider_name: riderName })
 
             if (res.result == 'error') {
-                throw new Error(res.error)
+                throw new Error(res.message)
+            }
+            else if (res.result == 'warning') {
+                await Swal.fire({
+                    icon: 'warning',
+                    html: res.message,
+                    confirmButtonText: '확인',
+                })
+                return
             }
 
             await Swal.fire({
@@ -269,7 +317,14 @@ document.querySelector('.join').onclick = async () => {
             const res = await postAsync('/game/join', { game_id: gameId })
 
             if (res.result == 'error') {
-                throw new Error(res.error)
+                throw new Error(res.message)
+            }
+            else if (res.result == 'warning') {
+                await Swal.fire({
+                    icon: 'warning',
+                    html: res.message,
+                    confirmButtonText: '확인',
+                })
             }
         }
         catch (error) {
@@ -359,7 +414,15 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             })
 
             if (res.result == 'error') {
-                throw new Error(res.error)
+                throw new Error(res.message)
+            }
+            else if (res.result == 'warning') {
+                await Swal.fire({
+                    icon: 'warning',
+                    html: res.message,
+                    confirmButtonText: '확인',
+                })
+                return
             }
 
             if (res.tracks.length < 9) {
@@ -417,7 +480,15 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 })
 
                 if (res.result == 'error') {
-                    throw new Error(res.error)
+                    throw new Error(res.message)
+                }
+                else if (res.result == 'warning') {
+                    await Swal.fire({
+                        icon: 'warning',
+                        html: res.message,
+                        confirmButtonText: '확인',
+                    })
+                    return
                 }
 
                 const gameId = res.game_id
@@ -449,7 +520,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
 }
 
 try {
-    const topRight = document.querySelector('.top-right')
     const avatar = document.querySelector('.avatar')
 
     let res = await postAsync('/user')

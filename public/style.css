@@ -62,12 +62,14 @@ div.bg {
 }
 
 .track-type-list {
-    width: 140vmin;
+    width: 60vw;
+    display: flex;
+    flex-wrap: wrap;
 }
 
 .track-type-list>img {
-    padding-top: 12px;
-    padding-bottom: 12px;
+    width: 14vw;
+    margin: 0.5vw;
     cursor: pointer;
 }
 
@@ -86,10 +88,25 @@ div.bg {
     cursor: pointer;
 }
 
+.track-list {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0vmin 0vw 5vmin 2.6vw;
+}
+
+.track-list>div>* {
+    width: 14.75vw;
+}
+
+.track-list>div {
+    margin: 0.5vw;
+    cursor: pointer;
+}
+
 .banpick-list {
     display: flex;
     flex-wrap: wrap;
-    padding: 0vmin 0vw 2vmin 0vw;
+    padding: 3vmin 0vw 2vmin 0vw;
     justify-content: center;
 }
 
@@ -130,18 +147,26 @@ div.bg {
     filter: grayscale(1);
 }
 
-.turn {
+.top {
+    width: 93.5vw;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 3vmin auto 0vmin auto;
+}
+
+.banpick-turn {
     display: inline-block;
-    background: rgba(255, 255, 255, 0.5);
-    color: black;
+    background: rgba(255, 255, 255, 0.4);
+    color: rgba(0, 0, 0, 0.8);
     border-radius: 1vmin;
-    font-size: 2vmin;
-    text-align: right;
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    padding: 1vmin 2vmin;
-    margin: 2vmin;
+    font-size: 1.8vmin;
+    padding: 1vmin 1.5vmin;
+}
+
+.banpick-random {
+    font-size: 1.8vmin !important;
+    padding: 2vmin !important;
+    border-radius: 0 !important;
 }
 
 .score {
@@ -195,8 +220,8 @@ div.bg {
 
 .bottom-left {
     display: inline-block;
-    background: rgba(255, 255, 255, 0.5);
-    color: black;
+    background: rgba(255, 255, 255, 0.4);
+    color: rgba(0, 0, 0, 0.8);
     border-radius: 1vmin;
     font-size: 2vmin;
     position: fixed;

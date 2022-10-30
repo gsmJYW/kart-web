@@ -25,7 +25,7 @@ try {
 
         let res = await postAsync('/rider/name', { rider_id: data.game.host_rider_id })
 
-        if (res.result == 'error') {
+        if (res.result != 'OK') {
             throw new Error(res.error)
         }
 
@@ -33,7 +33,7 @@ try {
 
         res = await postAsync('/rider/name', { rider_id: data.game.opponent_rider_id })
 
-        if (res.result == 'error') {
+        if (res.result != 'OK') {
             throw new Error(res.error)
         }
 
@@ -48,14 +48,6 @@ try {
         for (const banpickDiv of document.querySelectorAll('.banpick-list > div')) {
             const div = document.createElement('div')
             banpickDiv.appendChild(div)
-        }
-
-        for (const host of document.querySelectorAll('.host')) {
-            host.textContent = hostRiderName
-        }
-
-        for (const opponent of document.querySelectorAll('.opponent')) {
-            opponent.textContent = opponentRiderName
         }
 
         for (const banpick of data.banpick) {
@@ -84,9 +76,9 @@ try {
         }
 
         order = Math.max(...data.banpick.map((banpick) => banpick.order)) + 1
-        const turn = document.querySelector('.turn')
+        const top = document.querySelector('.top')
 
-        if (order <= 9) {
+        if (order <= 9 && !data.game.closed_at) {
             let turnRiderName
             let remainOrder = order
 
@@ -107,11 +99,40 @@ try {
                 remainOrder++
             }
 
+            const banpickRandom = document.querySelector('.banpick-random')
+
+            banpickRandom.onclick = async () => {
+                try {
+                    const res = await postAsync('/banpick/random')
+
+                    if (res.result == 'error') {
+                        throw new Error(res.message)
+                    }
+                    else if (res.result == 'warning') {
+                        await Swal.fire({
+                            icon: 'warning',
+                            html: res.message,
+                            confirmButtonText: '확인',
+                        })
+                    }
+                }
+                catch (error) {
+                    await Swal.fire({
+                        icon: 'error',
+                        title: '오류',
+                        html: error.message,
+                        confirmButtonText: '확인',
+                    })
+                }
+            }
+
             if (order % 2) {
                 turnRiderName = hostRiderName
+                banpickRandom.disabled = data.user_id == data.game.opponent_id
             }
             else {
                 turnRiderName = opponentRiderName
+                banpickRandom.disabled = data.user_id == data.game.host_id
             }
 
             document.querySelector('.turn-rider').textContent = turnRiderName
@@ -125,11 +146,49 @@ try {
                 banOrPick.textContent = '선택'
             }
 
-            turn.hidden = false
+            top.hidden = false
         }
         else {
-            turn.hidden = true
+            top.hidden = true
             clearInterval(interval)
+
+            if (data.game.quit_user_id) {
+                let quitRiderName
+
+                if (data.game.quit_user_id == data.game.host_id) {
+                    quitRiderName = hostRiderName
+                }
+                else {
+                    quitRiderName = opponentRiderName
+                }
+
+                const res = await Swal.fire({
+                    title: '게임 종료',
+                    html: `<strong>${quitRiderName}</strong>님이 게임을 나갔습니다. <br> 로비로 돌아 가시겠습니까?`,
+                    showCancelButton: true,
+                    confirmButtonText: '확인',
+                    cancelButtonText: '취소',
+                })
+
+                if (res.isConfirmed) {
+                    location.href = '/'
+                }
+            }
+            else {
+                const res = await Swal.fire({
+                    title: '게임 시작',
+                    html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
+                    showCancelButton: true,
+                    confirmButtonText: '확인',
+                    cancelButtonText: '취소',
+                })
+
+                if (res.isConfirmed) {
+                    location.href = '/round'
+                }
+            }
+
+            return
         }
 
         lastBanpickedAt = Math.max(...data.banpick.map(banpick => banpick.banpicked_at))
@@ -140,7 +199,14 @@ try {
                     const res = await postAsync('/banpick', { track_id: track.id })
 
                     if (res.result == 'error') {
-                        throw new Error(res.error)
+                        throw new Error(res.message)
+                    }
+                    else if (res.result == 'warning') {
+                        await Swal.fire({
+                            icon: 'warning',
+                            html: res.message,
+                            confirmButtonText: '확인',
+                        })
                     }
                 }
                 catch (error) {
@@ -151,20 +217,6 @@ try {
                         confirmButtonText: '확인',
                     })
                 }
-            }
-        }
-
-        if (data.game.round_started_at) {
-            const res = await Swal.fire({
-                title: '게임 시작',
-                html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
-                showCancelButton: true,
-                confirmButtonText: '확인',
-                cancelButtonText: '취소',
-            })
-
-            if (res.isConfirmed) {
-                location.href = '/round'
             }
         }
     })

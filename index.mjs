@@ -100,7 +100,7 @@ app.get('/', async (req, res) => {
 app.post('/timestamp', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     res.json({
@@ -111,7 +111,7 @@ app.post('/timestamp', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -119,7 +119,7 @@ app.post('/timestamp', async (req, res) => {
 app.post('/signup', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/nickname/${req.body.rider_name}`, {
@@ -131,7 +131,11 @@ app.post('/signup', async (req, res) => {
     const rider = await result.json()
 
     if (!rider.accessId) {
-      throw new Error('라이더를 찾지 못했습니다.')
+      res.json({
+        result: 'warning',
+        message: '라이더를 찾지 못했습니다.',
+      })
+      return
     }
 
     const accessToken = decrypt(req.session.access_token)
@@ -146,7 +150,7 @@ app.post('/signup', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -154,7 +158,7 @@ app.post('/signup', async (req, res) => {
 app.post('/user', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const user = (await pool.query(`SELECT CAST(id AS CHAR) AS id, name, discriminator, avatar FROM user WHERE id = ${decrypt(req.session.user_id)}`))[0][0]
@@ -167,7 +171,7 @@ app.post('/user', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -175,10 +179,10 @@ app.post('/user', async (req, res) => {
 app.post('/notification', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
-    const notificationList = (await pool.query(`SELECT * FROM notification ORDER BY created_at`))[0]
+    const notificationList = (await pool.query(`SELECT * FROM notification WHERE id NOT IN (SELECT notification_id FROM hide_notification WHERE user_id = ${decrypt(req.session.user_id)}) ORDER BY created_at`))[0]
 
     res.json({
       result: 'OK',
@@ -188,7 +192,27 @@ app.post('/notification', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
+    })
+  }
+})
+
+app.post('/notification/hide', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('인증되지 않은 요청입니다.')
+    }
+
+    await pool.query(`INSERT INTO hide_notification (user_id, notification_id) VALUES (${decrypt(req.session.user_id)}, ${req.body.notification_id})`)
+
+    res.json({
+      result: 'OK',
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      message: error.message,
     })
   }
 })
@@ -198,7 +222,7 @@ app.get('/discord/oauth', async (req, res) => {
     const code = req.query.code
 
     if (!code) {
-      throw new Error('authorization code not provided')
+      throw new Error('Discord OAuth2 인증 코드가 제공되지 않았습니다.')
     }
 
     let resp = await oauth.tokenRequest({
@@ -208,7 +232,7 @@ app.get('/discord/oauth', async (req, res) => {
     })
 
     if (!resp.access_token) {
-      throw new Error('invalid authorization code')
+      throw new Error('잘못된 Discord OAuth2 인증 코드입니다.')
     }
 
     const encryptedToken = encrypt(resp.access_token)
@@ -228,7 +252,7 @@ app.get('/discord/oauth', async (req, res) => {
 app.post('/rider/name', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/${req.body.rider_id}`, {
@@ -240,7 +264,11 @@ app.post('/rider/name', async (req, res) => {
     const rider = await result.json()
 
     if (!rider.name) {
-      throw new Error('라이더를 찾지 못했습니다.')
+      res.json({
+        result: 'warning',
+        message: '라이더를 찾지 못했습니다.',
+      })
+      return
     }
 
     res.json({
@@ -251,7 +279,7 @@ app.post('/rider/name', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -259,7 +287,7 @@ app.post('/rider/name', async (req, res) => {
 app.post('/rider/name/update', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/nickname/${req.body.rider_name}`, {
@@ -271,7 +299,11 @@ app.post('/rider/name/update', async (req, res) => {
     const rider = await result.json()
 
     if (!rider.accessId) {
-      throw new Error('라이더를 찾지 못했습니다.')
+      res.json({
+        result: 'warning',
+        message: '라이더를 찾지 못했습니다.',
+      })
+      return
     }
 
     await pool.query(`UPDATE user SET rider_id = ${rider.accessId} WHERE id = ${decrypt(req.session.user_id)}`)
@@ -283,7 +315,7 @@ app.post('/rider/name/update', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -299,7 +331,7 @@ app.get('/signout', async (req, res) => {
 app.post('/tracks', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const trackList = await getTrackList(req.body.channel, req.body.track_type)
@@ -312,7 +344,7 @@ app.post('/tracks', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -320,7 +352,7 @@ app.post('/tracks', async (req, res) => {
 app.get('/banpick', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const userId = decrypt(req.session.user_id)
@@ -346,7 +378,7 @@ app.get('/game/event', async (req, res) => {
     }
 
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const userId = decrypt(req.session.user_id)
@@ -393,7 +425,11 @@ app.post('/game/create', async (req, res) => {
     const game = (await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
 
     if (game) {
-      throw new Error('이미 진행 중이신 게임이 있습니다.')
+      res.json({
+        result: 'warning',
+        message: '이미 대기 중이거나 진행 중인 게임이 있습니다.',
+      })
+      return
     }
 
     let gameId
@@ -401,7 +437,7 @@ app.post('/game/create', async (req, res) => {
 
     while (!result.affectedRows) {
       gameId = Crypto.randomUUID().slice(0, 6)
-      result = (await pool.query(`INSERT IGNORE INTO game (id, host_id, host_rider_id, opened_at, channel, track_type, banpick_amount) VALUES ('${gameId}', '${userId}', (SELECT rider_id FROM user WHERE id = '${userId}'), UNIX_TIMESTAMP(NOW()), '${channel}', '${trackType}', ${banpickAmount})`))[0]
+      result = (await pool.query(`INSERT IGNORE INTO game (id, host_id, host_rider_id, opened_at, channel, track_type, banpick_amount) VALUES ('${gameId}', '${userId}', (SELECT rider_id FROM user WHERE id = '${userId}'), UNIX_TIMESTAMP(), '${channel}', '${trackType}', ${banpickAmount})`))[0]
     }
 
     await sendGameEvent(['lobby'], { userId: userId })
@@ -414,7 +450,7 @@ app.post('/game/create', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -427,16 +463,28 @@ app.post('/game/join', async (req, res) => {
     let game = (await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
 
     if (game) {
-      throw new Error('이미 진행 중이신 게임이 있습니다.')
+      res.json({
+        result: 'warning',
+        message: '이미 대기 중이거나 진행 중인 게임이 있습니다.',
+      })
+      return
     }
 
     game = (await pool.query(`SELECT * FROM game WHERE id = '${gameId}'`))[0][0]
 
     if (!game) {
-      throw new Error('존재하지 않는 초대 코드입니다.')
+      res.json({
+        result: 'warning',
+        message: '게임을 찾지 못했습니다.',
+      })
+      return
     }
-    else if (game.opponent_id || game.closed_at) {
-      throw new Error('만료된 초대 코드입니다.')
+    else if (game.banpick_started_at) {
+      res.json({
+        result: 'warning',
+        message: '만료된 초대 코드입니다.',
+      })
+      return
     }
 
     const user = (await pool.query(`SELECT * FROM user WHERE id = ${userId}`))[0][0]
@@ -447,7 +495,7 @@ app.post('/game/join', async (req, res) => {
     }
 
     const trackList = await getTrackList(game.channel, game.track_type, game.banpick_amount)
-    const valueList = [`('${game.id}', '${trackList.pop().id}', 1, true, 1, UNIX_TIMESTAMP(NOW()))`]
+    const valueList = [`('${game.id}', '${trackList.pop().id}', 1, true, 1, UNIX_TIMESTAMP())`]
 
     for (const track of trackList) {
       valueList.push(`('${game.id}', '${track.id}', NULL, false, NULL, NULL)`)
@@ -458,11 +506,11 @@ app.post('/game/join', async (req, res) => {
     req.session.player_id = req.session.user_id
     req.session.save()
 
-    await pool.query(`UPDATE game SET opponent_id = ${userId}, opponent_rider_id = ${riderId}, banpick_started_at = UNIX_TIMESTAMP(NOW()) WHERE id = '${gameId}'`)
+    await pool.query(`UPDATE game SET opponent_id = ${userId}, opponent_rider_id = ${riderId}, banpick_started_at = UNIX_TIMESTAMP() WHERE id = '${gameId}'`)
 
     game = (await pool.query(`SELECT * FROM game WHERE id = '${gameId}'`))[0][0]
 
-    await setRandomBanpickTimer(game.id, 2)
+    await setBanpickTimer(game.id, 2)
     await sendGameEvent(['lobby'], { gameId: gameId })
 
     res.json({
@@ -472,7 +520,7 @@ app.post('/game/join', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -480,14 +528,18 @@ app.post('/game/join', async (req, res) => {
 app.post('/game/close', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const userId = decrypt(req.session.user_id)
     const result = (await pool.query(`DELETE FROM game WHERE '${userId}' IN (host_id, opponent_id) AND banpick_started_at IS NULL`))[0]
 
     if (!result.affectedRows) {
-      throw new Error('대기 중인 게임이 없거나 이미 시작 되었습니다.')
+      res.json({
+        result: 'warning',
+        message: '대기 중인 게임이 없거나 이미 시작 되었습니다.',
+      })
+      return
     }
 
     await sendGameEvent(['lobby'], { userId: userId, isThereGame: false })
@@ -499,7 +551,51 @@ app.post('/game/close', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
+    })
+  }
+})
+
+app.post('/game/quit', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('인증되지 않은 요청입니다.')
+    }
+
+    const userId = decrypt(req.session.user_id)
+    const game = (await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
+
+    if (!game) {
+      res.json({
+        result: 'warning',
+        message: '진행 중인 게임이 없습니다.',
+      })
+      return
+    }
+
+    for (const banpickTimer of banpickTimerList.filter((banpickTimer) => banpickTimer.gameId == game.id)) {
+      clearTimeout(banpickTimer.id)
+    }
+
+    banpickTimerList = banpickTimerList.filter((banpickTimer) => banpickTimer.gameId != game.id)
+
+    for (const roundTimer of roundTimerList.filter((roundTimer) => roundTimer.gameId == game.id)) {
+      clearTimeout(roundTimer.id)
+    }
+
+    roundTimerList = roundTimerList.filter((roundTimer) => roundTimer.gameId != game.id)
+
+    await pool.query(`UPDATE game SET quit_user_id = ${userId}, closed_at = UNIX_TIMESTAMP() WHERE id = '${game.id}'`)
+    await sendGameEvent(['lobby', 'banpick', 'round'], { gameId: game.id })
+
+    res.json({
+      result: 'OK',
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      message: error.message,
     })
   }
 })
@@ -511,7 +607,7 @@ app.get('/images/tracks/:track', async (req, res) => {
 app.post('/banpick', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const userId = decrypt(req.session.user_id)
@@ -520,35 +616,51 @@ app.post('/banpick', async (req, res) => {
     const game = (await pool.query(`SELECT * FROM game WHERE'${decrypt(req.session.user_id)}' in (host_id, opponent_id) AND banpick_started_at IS NOT NULL AND round_started_at IS NULL AND closed_at IS NULL`))[0][0]
 
     if (!game) {
-      throw new Error('진행 중인 밴픽이 없습니다.')
+      res.json({
+        result: 'warning',
+        message: '진행 중인 밴픽이 없습니다.',
+      })
+      return
     }
 
     const banpickList = (await pool.query(`SELECT * FROM banpick WHERE game_id = '${game.id}' ORDER BY \`order\` DESC`))[0]
 
     if (!banpickList[0]) {
-      throw new Error('진행 중인 밴픽이 없습니다.')
+      res.json({
+        result: 'warning',
+        message: '진행 중인 밴픽이 없습니다.',
+      })
+      return
     }
 
     const order = banpickList[0].order + 1
     const turn = getBanpickTurn(order)
 
     if ((turn.host && userId != game.host_id) || (!turn.host && userId != game.opponent_id)) {
-      throw new Error('현재 차례가 아닙니다.')
+      res.json({
+        result: 'warning',
+        message: '현재 차례가 아닙니다.',
+      })
+      return
     }
 
     let banpick = banpickList.find((banpick) => banpick.track_id == trackId && !banpick.order)
 
     if (!banpick) {
-      throw new Error('밴픽 트랙이 아니거나 이미 선정된 트랙입니다.')
+      res.json({
+        result: 'warning',
+        message: '밴픽 트랙이 아니거나 이미 선정된 트랙입니다.',
+      })
+      return
     }
 
-    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${turn.pick}, banned = ${!turn.pick}, round = ${turn.round}, user_id = ${userId}, banpicked_at = UNIX_TIMESTAMP(NOW()) WHERE game_id = '${game.id}' AND track_id = '${trackId}'`)
+    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${turn.pick}, banned = ${!turn.pick}, round = ${turn.round}, user_id = ${userId}, banpicked_at = UNIX_TIMESTAMP() WHERE game_id = '${game.id}' AND track_id = '${trackId}'`)
 
-    for (const randomBanpickTimer of randomBanpickTimerList.filter((randomBanpickTimer) => randomBanpickTimer.gameId = game.id)) {
-      clearTimeout(randomBanpickTimer.id)
+    for (const banpickTimer of banpickTimerList.filter((banpickTimer) => banpickTimer.gameId == game.id)) {
+      clearTimeout(banpickTimer.id)
     }
 
-    await setRandomBanpickTimer(game.id, order + 1)
+    await setBanpickTimer(game.id, order + 1)
 
     res.json({
       result: 'OK'
@@ -557,7 +669,65 @@ app.post('/banpick', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
+    })
+  }
+})
+
+app.post('/banpick/random', async (req, res) => {
+  try {
+    if (!req.session.access_token) {
+      throw new Error('인증되지 않은 요청입니다.')
+    }
+
+    const userId = decrypt(req.session.user_id)
+    const game = (await pool.query(`SELECT * FROM game WHERE'${decrypt(req.session.user_id)}' in (host_id, opponent_id) AND banpick_started_at IS NOT NULL AND round_started_at IS NULL AND closed_at IS NULL`))[0][0]
+
+    if (!game) {
+      res.json({
+        result: 'warning',
+        message: '진행 중인 밴픽이 없습니다.',
+      })
+      return
+    }
+
+    const banpickList = (await pool.query(`SELECT * FROM banpick WHERE game_id = '${game.id}' ORDER BY \`order\` DESC`))[0]
+
+    if (!banpickList[0]) {
+      res.json({
+        result: 'warning',
+        message: '진행 중인 밴픽이 없습니다.',
+      })
+      return
+    }
+
+    const order = banpickList[0].order + 1
+    const turn = getBanpickTurn(order)
+
+    if ((turn.host && userId != game.host_id) || (!turn.host && userId != game.opponent_id)) {
+      res.json({
+        result: 'warning',
+        message: '현재 차례가 아닙니다.',
+      })
+      return
+    }
+
+    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${turn.pick}, banned = ${!turn.pick}, round = ${turn.round}, banpicked_at = UNIX_TIMESTAMP() WHERE game_id = '${game.id}' AND track_id = (SELECT track_id FROM (SELECT track_id FROM banpick WHERE game_id = '${game.id}' AND \`order\` IS NULL ORDER BY RAND() LIMIT 1) random_track)`)
+
+    for (const banpickTimer of banpickTimerList.filter((banpickTimer) => banpickTimer.gameId == game.id)) {
+      clearTimeout(banpickTimer.id)
+    }
+
+    await setBanpickTimer(game.id, order + 1)
+
+    res.json({
+      result: 'OK'
+    })
+  }
+  catch (error) {
+    res.json({
+      result: 'error',
+      message: error.message,
     })
   }
 })
@@ -565,7 +735,7 @@ app.post('/banpick', async (req, res) => {
 app.get('/round', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const userId = decrypt(req.session.user_id)
@@ -582,64 +752,21 @@ app.get('/round', async (req, res) => {
   }
 })
 
-app.post('/round/finish', async (req, res) => {
+app.post('/round/skip', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('not authorized')
-    }
-
-    const userId = decrypt(req.session.user_id)
-    const round = (await pool.query(`SELECT * FROM round AS r INNER JOIN game AS g INNER JOIN banpick AS b WHERE r.game_id = g.id AND r.game_id = b.game_id AND r.number = b.round AND ${userId} IN (g.host_id, g.opponent_id) AND g.round_started_at IS NOT NULL AND g.closed_at IS NULL ORDER BY number DESC LIMIT 1`))[0][0]
-
-    if (!round) {
-      throw new Error('진행 중인 라운드가 없습니다.')
-    }
-
-    if ((round.host_id == userId && round.host_ready) || (round.opponent_id && round.opponent_ready)) {
-      throw new Error('이미 라운드 완료를 하셨습니다.')
-    }
-
-    const match = await getMatch(userId, round)
-
-    if (!match) {
-      res.json({
-        result: 'match not found',
-      })
-
-      return
-    }
-
-    await pool.query(`UPDATE round SET host_record = ${match.hostRecord}, opponent_record = ${match.opponentRecord}, finished_at = UNIX_TIMESTAMP(NOW()) WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
-
-    for (const retireTimer of retireTimerList.filter((retireTimer) => retireTimer.gameId == round.game_id)) {
-      clearTimeout(retireTimer.id)
-    }
-
-    await setRetireTimer(round.game_id, round.number + 1)
-
-    res.json({
-      result: 'OK',
-    })
-  }
-  catch (error) {
-    res.json({
-      result: 'error',
-      error: error.message,
-    })
-  }
-})
-
-app.post('/round/finish-anyway', async (req, res) => {
-  try {
-    if (!req.session.access_token) {
-      throw new Error('not authorized')
+      throw new Error('인증되지 않은 요청입니다.')
     }
 
     const userId = decrypt(req.session.user_id)
     const round = (await pool.query(`SELECT r.*, g.host_id, g.opponent_id FROM round AS r INNER JOIN game AS g WHERE r.game_id = g.id AND '${userId}' IN (g.host_id, g.opponent_id) AND g.round_started_at IS NOT NULL AND g.closed_at IS NULL ORDER BY number DESC LIMIT 1`))[0][0]
 
     if (!round) {
-      throw new Error('진행 중인 라운드가 없습니다.')
+      res.json({
+        result: 'warning',
+        message: '진행 중인 라운드가 없습니다.',
+      })
+      return
     }
 
     let ready
@@ -652,19 +779,23 @@ app.post('/round/finish-anyway', async (req, res) => {
     }
 
     if (round[ready]) {
-      throw new Error('이미 라운드 완료를 하셨습니다.')
+      res.json({
+        result: 'warning',
+        message: '이미 라운드 스킵을 요청 하셨습니다.',
+      })
+      return
     }
 
     await pool.query(`UPDATE round SET ${ready} = true WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
 
     if (round.host_ready || round.opponent_ready) {
-      await pool.query(`UPDATE round SET host_record = '999.999', opponent_record = '999.999', finished_at = UNIX_TIMESTAMP(NOW()) WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
+      await pool.query(`UPDATE round SET host_record = '999.999', opponent_record = '999.999', finished_at = UNIX_TIMESTAMP() WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
 
-      for (const retireTimer of retireTimerList.filter((retireTimer) => retireTimer.gameId == round.game_id)) {
-        clearTimeout(retireTimer.id)
+      for (const roundTimer of roundTimerList.filter((roundTimer) => roundTimer.gameId == round.game_id)) {
+        clearTimeout(roundTimer.id)
       }
 
-      await setRetireTimer(round.game_id, round.number + 1)
+      await setRoundTimer(round.game_id, round.number + 1)
 
       res.json({
         result: 'OK',
@@ -681,7 +812,7 @@ app.post('/round/finish-anyway', async (req, res) => {
   catch (error) {
     res.json({
       result: 'error',
-      error: error.message,
+      message: error.message,
     })
   }
 })
@@ -848,14 +979,14 @@ function getBanpickTurn(order) {
   }
 }
 
-let randomBanpickTimerList = []
+let banpickTimerList = []
 
-async function setRandomBanpickTimer(gameId, order) {
-  randomBanpickTimerList = randomBanpickTimerList.filter((randomBanpickTimer) => randomBanpickTimer.gameId != gameId)
+async function setBanpickTimer(gameId, order) {
+  banpickTimerList = banpickTimerList.filter((banpickTimer) => banpickTimer.gameId != gameId)
 
   if (order > 9) {
-    await pool.query(`UPDATE game SET round_started_at = UNIX_TIMESTAMP(NOW()) WHERE id = '${gameId}'`)
-    await setRetireTimer(gameId, 1)
+    await pool.query(`UPDATE game SET round_started_at = UNIX_TIMESTAMP() WHERE id = '${gameId}'`)
+    await setRoundTimer(gameId, 1)
     await sendGameEvent(['lobby', 'banpick'], { gameId: gameId })
 
     return
@@ -866,55 +997,78 @@ async function setRandomBanpickTimer(gameId, order) {
   const turn = getBanpickTurn(order)
 
   const timerId = setTimeout(async () => {
-    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${turn.pick}, banned = ${!turn.pick}, round = ${turn.round}, banpicked_at = UNIX_TIMESTAMP(NOW()) WHERE game_id = '${gameId}' AND track_id = (SELECT track_id FROM (SELECT track_id FROM banpick WHERE game_id = '${gameId}' AND \`order\` IS NULL ORDER BY RAND() LIMIT 1) random_track)`)
-    await setRandomBanpickTimer(gameId, order + 1)
+    await pool.query(`UPDATE banpick SET \`order\` = ${order}, picked = ${turn.pick}, banned = ${!turn.pick}, round = ${turn.round}, banpicked_at = UNIX_TIMESTAMP() WHERE game_id = '${gameId}' AND track_id = (SELECT track_id FROM (SELECT track_id FROM banpick WHERE game_id = '${gameId}' AND \`order\` IS NULL ORDER BY RAND() LIMIT 1) random_track)`)
+    await setBanpickTimer(gameId, order + 1)
   }, 1000 * 60)
 
-  randomBanpickTimerList.push({
+  banpickTimerList.push({
     id: timerId,
     gameId: gameId,
   })
 }
 
-let retireTimerList = []
+let roundTimerList = []
 
-async function setRetireTimer(gameId, round) {
-  retireTimerList = retireTimerList.filter((retireTimer) => retireTimer.gameId != gameId)
+async function setRoundTimer(gameId, roundNumber) {
+  roundTimerList = roundTimerList.filter((roundTimer) => roundTimer.gameId != gameId)
 
   const result = (await pool.query(`SELECT GREATEST(SUM(CASE WHEN host_record > opponent_record THEN 1 ELSE 0 END), SUM(CASE WHEN host_record < opponent_record THEN 1 ELSE 0 END)) AS max_score FROM round WHERE game_id = '${gameId}'`))[0][0]
 
-  if (round > 7 || result.max_score >= 4) {
-    await pool.query(`UPDATE game SET closed_at = UNIX_TIMESTAMP(NOW()) WHERE id = '${gameId}'`)
+  if (roundNumber > 7 || result.max_score >= 4) {
+    await pool.query(`UPDATE game SET closed_at = UNIX_TIMESTAMP() WHERE id = '${gameId}'`)
     await sendGameEvent(['lobby', 'banpick', 'round'], { gameId: gameId })
     return
   }
 
-  await pool.query(`INSERT INTO round (game_id, number) VALUES ('${gameId}', ${round})`)
+  await pool.query(`INSERT INTO round (game_id, number) VALUES ('${gameId}', ${roundNumber})`)
   await sendGameEvent(['round'], { gameId: gameId })
 
-  const timerId = setTimeout(async () => {
-    await pool.query(`UPDATE round SET host_record = '999.999', opponent_record = '999.999', finished_at = UNIX_TIMESTAMP(NOW()) WHERE game_id = '${gameId}' AND number = ${round}`)
-    await setRetireTimer(gameId, round + 1)
-  }, 1000 * 60 * 7)
+  let timerId = setTimeout(async () => {
+    if (roundTimerList.find((roundTimer) => roundTimer.gameId == gameId && roundTimer.number == roundNumber)) {
+      const round = (await pool.query(`SELECT r.game_id, r.number, g.host_id, g.opponent_id, g.host_rider_id, g.opponent_rider_id, g.round_started_at, g.channel, b.track_id FROM round AS r INNER JOIN game as g INNER JOIN banpick AS b WHERE r.game_id = g.id AND r.game_id = b.game_id AND r.number = b.round AND r.game_id = '${gameId}' AND r.number = ${roundNumber}`))[0][0]
+      await getMatch(round, true)
 
-  retireTimerList.push({
+      setTimeout(async () => {
+        const roundTimerIndex = roundTimerList.findIndex((roundTimer) => roundTimer.gameId == gameId && roundTimer.number == roundNumber)
+
+        if (roundTimerIndex >= 0) {
+          roundTimerList[roundTimerIndex].getMatch = false
+
+          setTimeout(async () => {
+            await pool.query(`UPDATE round SET host_record = '999.999', opponent_record = '999.999', finished_at = UNIX_TIMESTAMP() WHERE game_id = '${gameId}' AND number = ${roundNumber}`)
+            await setRoundTimer(gameId, roundNumber + 1)
+          }, 1000 * 3)
+        }
+      }, 1000 * (60 * 6 - 3))
+    }
+  }, 1000 * 60)
+
+  roundTimerList.push({
     id: timerId,
     gameId: gameId,
+    number: roundNumber,
+    getMatch: true,
   })
 }
 
-async function getMatch(userId, round) {
+async function getMatch(round, getHostMatch) {
+  const startTime = new Date().getTime()
+
   try {
     let riderId
+    let hostRecord
+    let opponentRecord
 
-    if (userId == round.host_id) {
+    if (getHostMatch) {
       riderId = round.host_rider_id
     }
     else {
       riderId = round.opponent_rider_id
     }
 
-    let res = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/${riderId}/matches?limit=1`, {
+    const startDate = new Date(round.round_started_at * 1000)
+
+    let res = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/${riderId}/matches?start_date=${startDate.getUTCFullYear()}-${startDate.getUTCMonth()}-${startDate.getUTCDay()} ${startDate.getUTCHours()}:${startDate.getUTCMinutes()}:${startDate.getUTCSeconds()}&limit=1`, {
       headers: {
         Authorization: kartApiKey,
       },
@@ -947,23 +1101,41 @@ async function getMatch(userId, round) {
       opponentRider = result.teams.find((team) => team.players.find((player) => player.accountNo == round.opponent_rider_id)).players.find((player) => player.accountNo == round.opponent_rider_id)
     }
 
-    let hostRecord = 999.999
-    let opponentRecord = 999.999
-
-    if (!Number(hostRider.matchRetired)) {
+    if (Number(hostRider.matchRetired)) {
+      hostRecord = 999.999
+    }
+    else {
       hostRecord = Number(hostRider.matchTime) / 1000
     }
 
-    if (!Number(opponentRider.matchRetired)) {
+    if (Number(opponentRider.matchRetired)) {
+      opponentRecord = 999.999
+    }
+    else {
       opponentRecord = Number(opponentRider.matchTime) / 1000
     }
 
-    return ({
-      hostRecord: hostRecord,
-      opponentRecord: opponentRecord,
-    })
+    if (hostRecord && opponentRecord) {
+      await pool.query(`UPDATE round SET host_record = ${hostRecord}, opponent_record = ${opponentRecord}, finished_at = UNIX_TIMESTAMP() WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
+
+      const roundTimer = roundTimerList.find((roundTimer) => roundTimer.gameId == round.game_id && roundTimer.getMatch && roundTimer.number == round.number)
+
+      if (roundTimer) {
+        clearTimeout(roundTimer.id)
+        await setRoundTimer(round.game_id, round.number + 1)
+
+        return
+      }
+    }
   }
-  catch {
-    return null
+  catch { }
+
+  const roundTimer = roundTimerList.find((roundTimer) => roundTimer.gameId == round.game_id && roundTimer.getMatch && roundTimer.number == round.number)
+  const endTime = new Date().getTime()
+
+  if (roundTimer) {
+    setTimeout(async () => {
+      await getMatch(round, !getHostMatch)
+    }, endTime - startTime >= 1000 ? 0 : 1000 - (endTime - startTime))
   }
 }

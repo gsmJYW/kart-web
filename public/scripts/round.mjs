@@ -23,8 +23,21 @@ try {
 
         const data = JSON.parse(e.data)
 
-        const hostRider = await postAsync('/rider/name', { rider_id: data.game.host_rider_id })
-        const opponentRider = await postAsync('/rider/name', { rider_id: data.game.opponent_rider_id })
+        let res = await postAsync('/rider/name', { rider_id: data.game.host_rider_id })
+
+        if (res.result != 'OK') {
+            throw new Error(res.error)
+        }
+
+        const hostRiderName = res.rider_name
+
+        res = await postAsync('/rider/name', { rider_id: data.game.opponent_rider_id })
+
+        if (res.result != 'OK') {
+            throw new Error(res.error)
+        }
+
+        const opponentRiderName = res.rider_name
 
         roundNumber = Math.max(...data.round.map(round => round.number))
 
@@ -41,8 +54,8 @@ try {
             roundDiv.appendChild(div)
         }
 
-        document.querySelector('.host').textContent = hostRider.rider_name
-        document.querySelector('.opponent').textContent = opponentRider.rider_name
+        document.querySelector('.host').textContent = hostRiderName
+        document.querySelector('.opponent').textContent = opponentRiderName
 
         const hostScore = data.round.filter((round) => Number(round.host_record) < Number(round.opponent_record)).length
         const opponentScore = data.round.filter((round) => Number(round.host_record) > Number(round.opponent_record)).length
@@ -50,11 +63,79 @@ try {
         document.querySelector('.host-score').textContent = hostScore
         document.querySelector('.opponent-score').textContent = opponentScore
 
-        const finishRound = document.querySelector('.finish-round')
+        const roundSkip = document.querySelector('.round-skip')
         const currentRound = document.querySelector('.current-round > div')
 
         if (roundNumber > 7) {
-            finishRound.hidden = true
+            let icon
+            let title
+            let desc
+
+            if (data.game.quit_user_id) {
+                if (data.user_id == data.game.quit_user_id) {
+                    icon = 'error'
+                    title = '패배'
+                }
+                else {
+                    icon = 'success'
+                    title = '승리'
+                }
+
+                let quitRiderName
+
+                if (data.game.quit_user_id == data.game.host_id) {
+                    quitRiderName = hostRiderName
+                }
+                else {
+                    quitRiderName = opponentRiderName
+                }
+
+                desc = `<strong>${quitRiderName}</strong>님이 게임을 나갔습니다.`
+            }
+            else if (hostScore > opponentScore) {
+                if (data.user_id == data.game.host_id) {
+                    icon = 'success'
+                    title = '승리'
+                }
+                else {
+                    icon = 'error'
+                    title = '패배'
+                }
+
+                desc = `<strong>${hostRiderName}</strong>님의 승리입니다.`
+            }
+            else if (opponentScore > hostScore) {
+                if (data.user_id == data.game.opponent_id) {
+                    icon = 'success'
+                    title = '승리'
+                }
+                else {
+                    icon = 'error'
+                    title = '패배'
+                }
+
+                desc = `<strong>${opponentRiderName}</strong>님의 승리입니다.`
+            }
+            else {
+                icon = 'question'
+                title = '무승부'
+                desc = '승자가 없습니다.'
+            }
+
+            Swal.fire({
+                icon: icon,
+                title: title,
+                html: `${desc} <br> 로비로 돌아 가시겠습니까?`,
+                showCancelButton: true,
+                confirmButtonText: '확인',
+                cancelButtonText: '취소',
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    location.href = '/'
+                }
+            })
+
+            roundSkip.hidden = true
             currentRound.hidden = true
         }
 
@@ -64,14 +145,14 @@ try {
 
             const roundStatus = document.createElement('p')
 
-            if (roundNumber > round.number) {
-                let hostRecord = `${hostRider.rider_name}: ${formatRecord(Number(round.host_record))}`
+            if (roundNumber > round.number && round.host_record && round.opponent_record) {
+                let hostRecord = `${hostRiderName}: ${formatRecord(Number(round.host_record))}`
 
                 if (Number(round.host_record) < Number(round.opponent_record)) {
                     hostRecord = `<strong>${hostRecord}</strong>`
                 }
 
-                let opponentRecord = `${opponentRider.rider_name}: ${formatRecord(Number(round.opponent_record))}`
+                let opponentRecord = `${opponentRiderName}: ${formatRecord(Number(round.opponent_record))}`
 
                 if (Number(round.opponent_record) < Number(round.host_record)) {
                     opponentRecord = `<strong>${opponentRecord}</strong>`
@@ -96,27 +177,35 @@ try {
                 currentRound.appendChild(trackImage.cloneNode())
                 currentRound.appendChild(trackName)
 
-                finishRound.disabled = (data.game.host_id == data.user_id && round.host_ready) || (data.game.opponent_id == data.user_id && round.opponent_ready)
+                roundSkip.disabled = (data.game.host_id == data.user_id && round.host_ready) || (data.game.opponent_id == data.user_id && round.opponent_ready)
 
-                if (!finishRound.disabled && (round.host_ready || round.opponent_ready)) {
+                if (!roundSkip.disabled && (round.host_ready || round.opponent_ready)) {
                     Swal.fire({
-                        icon: 'warning',
-                        html: '상대가 매치 기록이 없는 상태에서 라운드를 완료했어요. <br> 리타이어로 처리하고 라운드를 넘기는 것에 동의하십니까?',
+                        icon: 'question',
+                        html: '상대가 라운드 스킵을 요청했어요. <br> 리타이어로 처리하고 라운드를 넘기는 것에 동의하십니까?',
                         showCancelButton: true,
                         confirmButtonText: '확인',
                         cancelButtonText: '취소',
                     }).then(async (res) => {
                         if (res.isConfirmed) {
                             try {
-                                const res = await postAsync('/round/finish-anyway')
+                                const res = await postAsync('/round/skip')
 
                                 if (res.result == 'error') {
-                                    throw new Error(res.error)
+                                    throw new Error(res.message)
+                                }
+                                else if (res.result == 'warning') {
+                                    await Swal.fire({
+                                        icon: 'warning',
+                                        html: res.message,
+                                        confirmButtonText: '확인',
+                                    })
                                 }
                             }
                             catch (error) {
                                 await Swal.fire({
-                                    icon: 'warning',
+                                    icon: 'error',
+                                    title: '오류',
                                     html: error.message,
                                     confirmButtonText: '확인',
                                 })
@@ -173,43 +262,33 @@ try {
             lastFinishedAt = data.game.round_started_at
         }
 
-        finishRound.onclick = async () => {
+        roundSkip.onclick = async () => {
             try {
-                let res = await postAsync('/round/finish')
+                const res = await postAsync('/round/skip')
 
                 if (res.result == 'error') {
-                    throw new Error(res.error)
+                    throw new Error(res.message)
                 }
-                else if (res.result == 'match not found') {
-                    const res = await Swal.fire({
+                else if (res.result == 'warning') {
+                    await Swal.fire({
                         icon: 'warning',
-                        html: '매치 기록을 찾지 못했습니다. <br> 인게임 시상식이 끝나고 최대 20초까지 걸릴 수 있습니다. <br> 이대로 완료하고 리타이어 처리를 원하십니까?',
-                        showCancelButton: true,
+                        html: res.message,
                         confirmButtonText: '확인',
-                        cancelButtonText: '취소',
+                    })
+                }
+                else if (res.result == 'waiting for the other') {
+                    await Swal.fire({
+                        icon: 'success',
+                        html: '상대가 동의하기를 기다리고 있어요.',
+                        confirmButtonText: '확인',
                         showOutsideClick: false,
                     })
-
-                    if (res.isConfirmed) {
-                        const res = await postAsync('/round/finish-anyway')
-
-                        if (res.result == 'error') {
-                            throw new Error(res.error)
-                        }
-                        else if (res.result == 'waiting for the other') {
-                            await Swal.fire({
-                                icon: 'success',
-                                html: '상대가 라운드를 완료하기를 기다리고 있어요.',
-                                confirmButtonText: '확인',
-                                showOutsideClick: false,
-                            })
-                        }
-                    }
                 }
             }
             catch (error) {
                 await Swal.fire({
-                    icon: 'warning',
+                    icon: 'error',
+                    title: '오류',
                     html: error.message,
                     confirmButtonText: '확인',
                 })
@@ -220,6 +299,7 @@ try {
 catch (error) {
     await Swal.fire({
         icon: 'error',
+        title: '오류',
         html: error.message,
         confirmButtonText: '새로고침',
     })

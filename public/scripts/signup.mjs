@@ -1,3 +1,17 @@
+function postAsync(url, params = {}) {
+    return new Promise((resolve, reject) => {
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(params),
+        }).then(async (res) => {
+            resolve(await res.json())
+        }).catch((error) => reject(error))
+    })
+}
+
 const res = await Swal.fire({
     icon: 'success',
     title: '거의 다 왔어요',
@@ -13,20 +27,19 @@ const riderName = res.value.trim()
 
 if (res.isConfirmed) {
     try {
-        const res = await fetch('/signup', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                rider_name: riderName,
-            }),
+        const res = await postAsync('/signup', {
+            rider_name: riderName,
         })
 
-        const json = await res.json()
-
-        if (json.result == 'error') {
-            throw new Error(json.error)
+        if (res.result == 'error') {
+            throw new Error(res.message)
+        }
+        else if (res.result == 'warning') {
+            await Swal.fire({
+                icon: 'warning',
+                html: res.message,
+                confirmButtonText: '확인',
+            })
         }
     }
     catch (error) {
