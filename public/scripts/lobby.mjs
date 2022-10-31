@@ -2,7 +2,7 @@ try {
     const eventSource = new EventSource('/game/event?path=lobby')
     eventSource.addEventListener('game_update', async (e) => {
         Swal.close()
-        
+
         const data = JSON.parse(e.data)
 
         const gameStarted = document.querySelector('.game-started')
@@ -242,38 +242,40 @@ document.querySelector('.change-rider-name').onclick = async () => {
         cancelButtonText: '취소',
     })
 
-    if (res.isConfirmed) {
-        const riderName = res.value.trim()
+    if (!res.isConfirmed) {
+        return
+    }
 
-        try {
-            const res = await postAsync('/rider/name/update', { rider_name: riderName })
+    const riderName = res.value.trim()
 
-            if (res.result == 'error') {
-                throw new Error(res.message)
-            }
-            else if (res.result == 'warning') {
-                await Swal.fire({
-                    icon: 'warning',
-                    html: res.message,
-                    confirmButtonText: '확인',
-                })
-                return
-            }
+    try {
+        const res = await postAsync('/rider/name/update', { rider_name: riderName })
 
+        if (res.result == 'error') {
+            throw new Error(res.message)
+        }
+        else if (res.result == 'warning') {
             await Swal.fire({
-                icon: 'success',
-                html: '라이더명을 변경 하였습니다.',
+                icon: 'warning',
+                html: res.message,
                 confirmButtonText: '확인',
             })
+            return
         }
-        catch (error) {
-            await Swal.fire({
-                icon: 'error',
-                title: '오류',
-                html: error.message,
-                confirmButtonText: '확인',
-            })
-        }
+
+        await Swal.fire({
+            icon: 'success',
+            html: '라이더명을 변경 하였습니다.',
+            confirmButtonText: '확인',
+        })
+    }
+    catch (error) {
+        await Swal.fire({
+            icon: 'error',
+            title: '오류',
+            html: error.message,
+            confirmButtonText: '확인',
+        })
     }
 }
 
@@ -286,10 +288,12 @@ document.querySelector('.signout').onclick = async () => {
         cancelButtonText: '취소'
     })
 
-    if (res.isConfirmed) {
-        await fetch('/signout')
-        location.reload()
+    if (!res.isConfirmed) {
+        return
     }
+
+    await fetch('/signout')
+    location.reload()
 }
 
 document.querySelector('.join').onclick = async () => {
@@ -301,40 +305,42 @@ document.querySelector('.join').onclick = async () => {
         cancelButtonText: '취소',
     })
 
-    if (res.isConfirmed) {
-        const gameId = res.value.trim()
+    if (!res.isConfirmed) {
+        return
+    }
+    
+    const gameId = res.value.trim()
 
-        if (/[^a-z0-9]/g.test(gameId) || gameId.length != 6) {
+    if (/[^a-z0-9]/g.test(gameId) || gameId.length != 6) {
+        await Swal.fire({
+            icon: 'warning',
+            html: '초대 코드에 잘못된 문자가 들어갔거나 6자가 아닙니다.',
+            confirmButtonText: '확인',
+        })
+        return
+    }
+
+    try {
+        const res = await postAsync('/game/join', { game_id: gameId })
+
+        if (res.result == 'error') {
+            throw new Error(res.message)
+        }
+        else if (res.result == 'warning') {
             await Swal.fire({
                 icon: 'warning',
-                html: '초대 코드에 잘못된 문자가 들어갔거나 6자가 아닙니다.',
-                confirmButtonText: '확인',
-            })
-            return
-        }
-
-        try {
-            const res = await postAsync('/game/join', { game_id: gameId })
-
-            if (res.result == 'error') {
-                throw new Error(res.message)
-            }
-            else if (res.result == 'warning') {
-                await Swal.fire({
-                    icon: 'warning',
-                    html: res.message,
-                    confirmButtonText: '확인',
-                })
-            }
-        }
-        catch (error) {
-            await Swal.fire({
-                icon: 'error',
-                title: '오류',
-                html: error.message,
+                html: res.message,
                 confirmButtonText: '확인',
             })
         }
+    }
+    catch (error) {
+        await Swal.fire({
+            icon: 'error',
+            title: '오류',
+            html: error.message,
+            confirmButtonText: '확인',
+        })
     }
 }
 
