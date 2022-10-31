@@ -186,6 +186,7 @@ try {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
+                allowOutsideClick: false,
             })
 
             if (res.isConfirmed) {
@@ -199,6 +200,7 @@ try {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
+                allowOutsideClick: false,
             })
 
             if (res.isConfirmed) {
@@ -240,6 +242,7 @@ document.querySelector('.change-rider-name').onclick = async () => {
         showCancelButton: true,
         confirmButtonText: '확인',
         cancelButtonText: '취소',
+        allowOutsideClick: false,
     })
 
     if (!res.isConfirmed) {
@@ -285,7 +288,8 @@ document.querySelector('.signout').onclick = async () => {
         html: '로그아웃 하여도 대기 중이거나 <br> 진행 중인 게임은 취소되지 않습니다.',
         showCancelButton: true,
         confirmButtonText: '로그아웃',
-        cancelButtonText: '취소'
+        cancelButtonText: '취소',
+        allowOutsideClick: false,
     })
 
     if (!res.isConfirmed) {
@@ -303,6 +307,7 @@ document.querySelector('.join').onclick = async () => {
         showCancelButton: true,
         confirmButtonText: '확인',
         cancelButtonText: '취소',
+        allowOutsideClick: false,
     })
 
     if (!res.isConfirmed) {
@@ -361,6 +366,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
+                allowOutsideClick: false,
             })
 
             if (!res.isConfirmed) {
@@ -381,6 +387,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             showCancelButton: true,
             confirmButtonText: '확인',
             cancelButtonText: '취소',
+            allowOutsideClick: false,
         })
 
         if (!res.isConfirmed) {
@@ -401,6 +408,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
+                allowOutsideClick: false,
             })
 
             if (!res.isConfirmed) {
@@ -454,6 +462,7 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
+                allowOutsideClick: false,
             })
 
             if (res.isConfirmed) {
@@ -586,6 +595,7 @@ try {
             showCancelButton: true,
             confirmButtonText: '다신 보지 않기',
             cancelButtonText: '확인',
+            allowOutsideClick: false,
         })
 
         if (res.isConfirmed) {

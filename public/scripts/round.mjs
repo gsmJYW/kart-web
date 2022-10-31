@@ -41,10 +41,6 @@ try {
 
         roundNumber = Math.max(...data.round.map(round => round.number))
 
-        if (data.game.closed_at) {
-            roundNumber = Infinity
-        }
-
         for (const roundElement of document.querySelectorAll('.round-list > div > div, .round-list > div > p:nth-child(3), .round-list > div > img')) {
             roundElement.remove()
         }
@@ -66,7 +62,7 @@ try {
         const roundSkip = document.querySelector('.round-skip')
         const currentRound = document.querySelector('.current-round > div')
 
-        if (roundNumber > 7) {
+        if (data.game.closed_at) {
             let icon
             let title
             let desc
@@ -129,6 +125,7 @@ try {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
+                allowOutsideClick: false,
             }).then((res) => {
                 if (res.isConfirmed) {
                     location.href = '/'
@@ -139,13 +136,19 @@ try {
             currentRound.hidden = true
         }
 
-        for (const round of data.round) {
-            const trackImage = document.createElement('img')
-            trackImage.src = `/images/tracks/${round.track_id}.png`
-
+        for (const banpick of data.banpick.filter((banpick) => banpick.round)) {
             const roundStatus = document.createElement('p')
 
-            if (roundNumber > round.number && round.host_record && round.opponent_record) {
+            const trackImage = document.createElement('img')
+            trackImage.src = `/images/tracks/${banpick.track_id}.png`
+
+            const round = data.round.find((round) => round.number == banpick.round)
+
+            if (!round || (round.number == roundNumber && data.game.closed_at)) {
+                continue
+            }
+
+            if (round.host_record && round.opponent_record) {
                 let hostRecord = `${hostRiderName}: ${formatRecord(Number(round.host_record))}`
 
                 if (Number(round.host_record) < Number(round.opponent_record)) {
@@ -161,8 +164,10 @@ try {
                 roundStatus.innerHTML = `${hostRecord} <br> ${opponentRecord}`
             }
             else {
-                roundStatus.innerHTML = '진행 중 <br> &nbsp;'
+                roundStatus.innerHTML = '진행 중'
+            }
 
+            if (round.number == roundNumber) {
                 for (const element of document.querySelectorAll('.current-round > div > *')) {
                     element.remove()
                 }
@@ -177,39 +182,42 @@ try {
                 currentRound.appendChild(trackImage.cloneNode())
                 currentRound.appendChild(trackName)
 
-                roundSkip.disabled = (data.game.host_id == data.user_id && round.host_ready) || (data.game.opponent_id == data.user_id && round.opponent_ready)
+                roundSkip.disabled = (data.game.host_id == data.user_id && round.host_skipped) || (data.game.opponent_id == data.user_id && round.opponent_skipped)
 
-                if (!roundSkip.disabled && (round.host_ready || round.opponent_ready)) {
+                if (!roundSkip.disabled && (round.host_skipped || round.opponent_skipped)) {
                     Swal.fire({
                         icon: 'question',
                         html: '상대가 라운드 스킵을 요청했어요. <br> 리타이어로 처리하고 라운드를 넘기는 것에 동의하십니까?',
                         showCancelButton: true,
                         confirmButtonText: '확인',
                         cancelButtonText: '취소',
+                        allowOutsideClick: false,
                     }).then(async (res) => {
-                        if (res.isConfirmed) {
-                            try {
-                                const res = await postAsync('/round/skip')
+                        if (!res.isConfirmed) {
+                            return
+                        }
 
-                                if (res.result == 'error') {
-                                    throw new Error(res.message)
-                                }
-                                else if (res.result == 'warning') {
-                                    await Swal.fire({
-                                        icon: 'warning',
-                                        html: res.message,
-                                        confirmButtonText: '확인',
-                                    })
-                                }
+                        try {
+                            const res = await postAsync('/round/skip')
+
+                            if (res.result == 'error') {
+                                throw new Error(res.message)
                             }
-                            catch (error) {
+                            else if (res.result == 'warning') {
                                 await Swal.fire({
-                                    icon: 'error',
-                                    title: '오류',
-                                    html: error.message,
+                                    icon: 'warning',
+                                    html: res.message,
                                     confirmButtonText: '확인',
                                 })
                             }
+                        }
+                        catch (error) {
+                            await Swal.fire({
+                                icon: 'error',
+                                title: '오류',
+                                html: error.message,
+                                confirmButtonText: '확인',
+                            })
                         }
                     })
                 }
@@ -247,12 +255,12 @@ try {
 
         document.querySelector('.match-type').textContent = channel
 
-        if (roundNumber <= 7) {
-            bottomLeft.hidden = false
-        }
-        else {
+        if (data.game.closed_at) {
             bottomLeft.hidden = true
             clearInterval(interval)
+        }
+        else {
+            bottomLeft.hidden = false
         }
 
         if (roundNumber > 1) {
@@ -264,7 +272,20 @@ try {
 
         roundSkip.onclick = async () => {
             try {
-                const res = await postAsync('/round/skip')
+                let res = await Swal.fire({
+                    icon: 'warning',
+                    html: '라운드 스킵을 요청하고 <br> 상대가 동의하면 라타이어 처리됩니다. <br> 정말 넘기시겠습니까?',
+                    showCancelButton: true,
+                    confirmButtonText: '확인',
+                    cancelButtonText: '취소',
+                    allowOutsideClick: false,
+                })
+
+                if (!res.isConfirmed) {
+                    return
+                }
+
+                res = await postAsync('/round/skip')
 
                 if (res.result == 'error') {
                     throw new Error(res.message)
@@ -319,7 +340,7 @@ interval = setInterval(async () => {
 }, 1000)
 
 function formatRecord(record) {
-    if (record > 999) {
+    if (record > 9999) {
         return 'RETIRE'
     }
 
