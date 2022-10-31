@@ -772,10 +772,10 @@ app.post('/round/skip', async (req, res) => {
     let ready
 
     if (round.host_id == userId) {
-      ready = 'host_ready'
+      ready = 'host_skipped'
     }
     else {
-      ready = 'opponent_ready'
+      ready = 'opponent_skipped'
     }
 
     if (round[ready]) {
@@ -788,8 +788,8 @@ app.post('/round/skip', async (req, res) => {
 
     await pool.query(`UPDATE round SET ${ready} = true WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
 
-    if (round.host_ready || round.opponent_ready) {
-      await pool.query(`UPDATE round SET host_record = '999.999', opponent_record = '999.999', finished_at = UNIX_TIMESTAMP() WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
+    if (round.host_skipped || round.opponent_skipped) {
+      await pool.query(`UPDATE round SET host_record = '9999.999', opponent_record = '9999.999', finished_at = UNIX_TIMESTAMP() WHERE game_id = '${round.game_id}' AND number = ${round.number}`)
 
       for (const roundTimer of roundTimerList.filter((roundTimer) => roundTimer.gameId == round.game_id)) {
         clearTimeout(roundTimer.id)
@@ -1035,13 +1035,13 @@ async function setRoundTimer(gameId, roundNumber) {
           roundTimerList[roundTimerIndex].getMatch = false
 
           setTimeout(async () => {
-            await pool.query(`UPDATE round SET host_record = '999.999', opponent_record = '999.999', finished_at = UNIX_TIMESTAMP() WHERE game_id = '${gameId}' AND number = ${roundNumber}`)
+            await pool.query(`UPDATE round SET host_record = '9999.999', opponent_record = '9999.999', finished_at = UNIX_TIMESTAMP() WHERE game_id = '${gameId}' AND number = ${roundNumber}`)
             await setRoundTimer(gameId, roundNumber + 1)
           }, 1000 * 3)
         }
-      }, 1000 * (60 * 6 - 3))
+      }, 1000 * (60 * 7 - 50 - 3))
     }
-  }, 1000 * 60)
+  }, 1000 * 50)
 
   roundTimerList.push({
     id: timerId,
@@ -1102,14 +1102,14 @@ async function getMatch(round, getHostMatch) {
     }
 
     if (Number(hostRider.matchRetired)) {
-      hostRecord = 999.999
+      hostRecord = 9999.999
     }
     else {
       hostRecord = Number(hostRider.matchTime) / 1000
     }
 
     if (Number(opponentRider.matchRetired)) {
-      opponentRecord = 999.999
+      opponentRecord = 9999.999
     }
     else {
       opponentRecord = Number(opponentRider.matchTime) / 1000
