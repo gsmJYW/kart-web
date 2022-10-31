@@ -583,10 +583,8 @@ app.post('/game/quit', async (req, res) => {
       clearTimeout(roundTimer.id)
     }
 
-    roundTimerList = roundTimerList.filter((roundTimer) => roundTimer.gameId != game.id)
-
-    await pool.query(`UPDATE game SET quit_user_id = ${userId}, closed_at = UNIX_TIMESTAMP() WHERE id = '${game.id}'`)
-    await sendGameEvent(['lobby', 'banpick', 'round'], { gameId: game.id })
+    await pool.query(`UPDATE game SET quit_user_id = ${userId} WHERE id = '${game.id}'`)
+    await setRoundTimer(game.id, 8)
 
     res.json({
       result: 'OK',
@@ -1016,7 +1014,12 @@ async function setRoundTimer(gameId, roundNumber) {
 
   if (roundNumber > 7 || result.max_score >= 4) {
     await pool.query(`UPDATE game SET closed_at = UNIX_TIMESTAMP() WHERE id = '${gameId}'`)
+
     await sendGameEvent(['lobby', 'banpick', 'round'], { gameId: gameId })
+
+    await pool.query(`DELETE FROM banpick WHERE game_id = '${gameId}' AND picked = false AND banned = false`)
+    await pool.query(`DELETE FROM round WHERE game_id = '${gameId}' AND host_record IS NULL AND opponent_record IS NULL`)
+
     return
   }
 
