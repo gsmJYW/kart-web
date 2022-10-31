@@ -213,20 +213,6 @@ catch (error) {
     await showError(error)
 }
 
-function postAsync(url, params = {}) {
-    return new Promise((resolve, reject) => {
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(params),
-        }).then(async (res) => {
-            resolve(await res.json())
-        }).catch((error) => reject(error))
-    })
-}
-
 document.querySelector('.stat').onclick = async () => {
     await Swal.fire({
         title: '공사중',
@@ -609,6 +595,20 @@ try {
 }
 catch (error) {
     await showError(error)
+}
+
+function postAsync(url, params = {}) {
+    return new Promise((resolve, reject) => {
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(params),
+        }).then(async (res) => {
+            resolve(await res.json())
+        }).catch((error) => reject(error))
+    })
 }
 
 async function showError(error) {

@@ -1,17 +1,3 @@
-function postAsync(url, params = {}) {
-    return new Promise((resolve, reject) => {
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(params),
-        }).then(async (res) => {
-            resolve(await res.json())
-        }).catch((error) => reject(error))
-    })
-}
-
 const res = await Swal.fire({
     icon: 'success',
     title: '거의 다 왔어요',
@@ -56,3 +42,18 @@ else {
 }
 
 location.reload()
+
+function postAsync(url, params = {}) {
+    return new Promise((resolve, reject) => {
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(params),
+        }).then(async (res) => {
+            resolve(await res.json())
+        }).catch((error) => reject(error))
+    })
+}
+

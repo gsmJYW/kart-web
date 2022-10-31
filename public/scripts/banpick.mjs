@@ -1,17 +1,3 @@
-function postAsync(url, params = {}) {
-    return new Promise((resolve, reject) => {
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(params),
-        }).then(async (res) => {
-            resolve(await res.json())
-        }).catch((error) => reject(error))
-    })
-}
-
 let lastBanpickedAt
 let order
 let interval
@@ -244,3 +230,17 @@ interval = setInterval(async () => {
         }
     }
 }, 1000)
+
+function postAsync(url, params = {}) {
+    return new Promise((resolve, reject) => {
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(params),
+        }).then(async (res) => {
+            resolve(await res.json())
+        }).catch((error) => reject(error))
+    })
+}
