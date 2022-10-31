@@ -25,11 +25,11 @@ DROP TABLE IF EXISTS `round`;
 CREATE TABLE `round` (
   `game_id` char(6) NOT NULL COMMENT '게임 id',
   `number` tinyint unsigned NOT NULL COMMENT '라운드 수',
-  `host_record` decimal(6,3) DEFAULT NULL COMMENT '호스트 기록, 리타이어할 경우 999.999',
-  `opponent_record` decimal(6,3) DEFAULT NULL COMMENT '참여자 기록, 리타이어할 경우 999.999',
+  `host_record` decimal(7,3) DEFAULT NULL COMMENT '호스트 기록, 리타이어할 경우 9999.999',
+  `opponent_record` decimal(7,3) DEFAULT NULL COMMENT '참여자 기록, 리타이어할 경우 9999.999',
   `finished_at` bigint DEFAULT NULL COMMENT '라운드 종료 일시 (유닉스 시간)',
-  `host_ready` tinyint(1) NOT NULL DEFAULT '0',
-  `opponent_ready` tinyint(1) NOT NULL DEFAULT '0',
+  `host_skipped` tinyint(1) NOT NULL DEFAULT '0',
+  `opponent_skipped` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`number`,`game_id`),
   KEY `round_game_id_idx` (`game_id`),
   CONSTRAINT `round_game_id` FOREIGN KEY (`game_id`) REFERENCES `banpick` (`game_id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -55,4 +55,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2022-10-31  4:42:29
+-- Dump completed on 2022-11-01  8:07:02
