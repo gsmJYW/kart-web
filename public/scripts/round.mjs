@@ -4,6 +4,31 @@ let interval
 
 try {
     const eventSource = new EventSource('/game/event?path=round')
+
+    eventSource.addEventListener('error', async (e) => {
+        eventSource.close()
+
+        await Swal.fire({
+            icon: 'warning',
+            html: e.data.toString(),
+            confirmButtonText: '홈으로',
+        })
+
+        location.href = '/'
+    })
+
+    eventSource.addEventListener('server_side_error', async () => {
+        eventSource.close()
+
+        await Swal.fire({
+            icon: 'error',
+            html: '알 수 없는 오류가 발생 하였습니다.',
+            confirmButtonText: '새로고침',
+        })
+
+        location.reload()
+    })
+
     eventSource.addEventListener('game_update', async (e) => {
         Swal.close()
 
@@ -187,23 +212,14 @@ try {
                             const res = await postAsync('/round/skip')
 
                             if (res.result == 'error') {
-                                throw new Error(res.message)
+                                await showWarning(res.reason)
                             }
-                            else if (res.result == 'warning') {
-                                await Swal.fire({
-                                    icon: 'warning',
-                                    html: res.message,
-                                    confirmButtonText: '확인',
-                                })
+                            else if (res.result == 'server_side_error') {
+                                throw new Error()
                             }
                         }
-                        catch (error) {
-                            await Swal.fire({
-                                icon: 'error',
-                                title: '오류',
-                                html: error.message,
-                                confirmButtonText: '확인',
-                            })
+                        catch {
+                            await showError()
                         }
                     })
                 }
@@ -274,14 +290,10 @@ try {
                 res = await postAsync('/round/skip')
 
                 if (res.result == 'error') {
-                    throw new Error(res.message)
+                    await showWarning(res.reason)
                 }
-                else if (res.result == 'warning') {
-                    await Swal.fire({
-                        icon: 'warning',
-                        html: res.message,
-                        confirmButtonText: '확인',
-                    })
+                else if (res.result == 'server_side_error') {
+                    throw new Error()
                 }
                 else if (res.result == 'waiting for the other') {
                     await Swal.fire({
@@ -292,18 +304,13 @@ try {
                     })
                 }
             }
-            catch (error) {
-                await Swal.fire({
-                    icon: 'error',
-                    title: '오류',
-                    html: error.message,
-                    confirmButtonText: '확인',
-                })
+            catch {
+                await showError()
             }
         }
     })
 }
-catch (error) {
+catch {
     await Swal.fire({
         icon: 'error',
         title: '오류',
@@ -339,7 +346,21 @@ function postAsync(url, params = {}) {
     })
 }
 
+async function showWarning(reason) {
+    await Swal.fire({
+        icon: 'warning',
+        html: reason,
+        confirmButtonText: '확인',
+    })
+}
 
+async function showError() {
+    await Swal.fire({
+        icon: 'error',
+        html: '알 수 없는 오류가 발생 하였습니다.',
+        confirmButtonText: '확인',
+    })
+}
 
 function formatRecord(record) {
     if (record > 9999) {

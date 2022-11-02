@@ -1,5 +1,25 @@
 try {
     const eventSource = new EventSource('/game/event?path=lobby')
+
+    eventSource.addEventListener('error', async (e) => {
+        eventSource.close()
+
+        await Swal.fire({
+            icon: 'warning',
+            html: e.data.toString(),
+            confirmButtonText: '새로고침',
+        })
+
+        location.reload()
+    })
+
+    eventSource.addEventListener('server_side_error', async () => {
+        eventSource.close()
+
+        await showError()
+        location.reload()
+    })
+
     eventSource.addEventListener('game_update', async (e) => {
         Swal.close()
 
@@ -110,21 +130,16 @@ try {
                     const res = await postAsync('/game/quit')
 
                     if (res.result == 'error') {
-                        throw new Error(res.message)
+                        await showWarning(res.reason)
                     }
-                    else if (res.result == 'warning') {
-                        await Swal.fire({
-                            icon: 'warning',
-                            html: res.message,
-                            confirmButtonText: '확인',
-                        })
+                    else if (res.result == 'server_side_error') {
+                        throw new Error()
                     }
                 }
-                catch (error) {
+                catch {
                     await Swal.fire({
                         icon: 'error',
-                        title: '오류',
-                        html: error.message,
+                        html: '알 수 없는 오류가 발생 하였습니다.',
                         confirmButtonText: '확인',
                     })
                 }
@@ -154,21 +169,16 @@ try {
                     const res = await postAsync('/game/close')
 
                     if (res.result == 'error') {
-                        throw new Error(res.message)
+                        await showWarning(res.reason)
                     }
-                    else if (res.result == 'warning') {
-                        await Swal.fire({
-                            icon: 'warning',
-                            html: res.message,
-                            confirmButtonText: '확인',
-                        })
+                    else if (res.result == 'server_side_error') {
+                        throw new Error()
                     }
                 }
-                catch (error) {
+                catch {
                     await Swal.fire({
                         icon: 'error',
-                        title: '오류',
-                        html: error.message,
+                        html: '알 수 없는 오류가 발생 하였습니다.',
                         confirmButtonText: '확인',
                     })
                 }
@@ -209,8 +219,8 @@ try {
         }
     })
 }
-catch (error) {
-    await showError(error)
+catch {
+    await showErrorWithOption()
 }
 
 document.querySelector('.stat').onclick = async () => {
@@ -241,15 +251,11 @@ document.querySelector('.change-rider-name').onclick = async () => {
         const res = await postAsync('/rider/name/update', { rider_name: riderName })
 
         if (res.result == 'error') {
-            throw new Error(res.message)
-        }
-        else if (res.result == 'warning') {
-            await Swal.fire({
-                icon: 'warning',
-                html: res.message,
-                confirmButtonText: '확인',
-            })
+            await showWarning(res.reason)
             return
+        }
+        else if (res.result == 'server_side_error') {
+            throw new Error()
         }
 
         await Swal.fire({
@@ -258,11 +264,10 @@ document.querySelector('.change-rider-name').onclick = async () => {
             confirmButtonText: '확인',
         })
     }
-    catch (error) {
+    catch {
         await Swal.fire({
             icon: 'error',
-            title: '오류',
-            html: error.message,
+            html: '알 수 없는 오류가 발생 하였습니다.',
             confirmButtonText: '확인',
         })
     }
@@ -299,7 +304,7 @@ document.querySelector('.join').onclick = async () => {
     if (!res.isConfirmed) {
         return
     }
-    
+
     const gameId = res.value.trim()
 
     if (/[^a-z0-9]/g.test(gameId) || gameId.length != 6) {
@@ -315,21 +320,16 @@ document.querySelector('.join').onclick = async () => {
         const res = await postAsync('/game/join', { game_id: gameId })
 
         if (res.result == 'error') {
-            throw new Error(res.message)
+            await showWarning(res.reason)
         }
-        else if (res.result == 'warning') {
-            await Swal.fire({
-                icon: 'warning',
-                html: res.message,
-                confirmButtonText: '확인',
-            })
+        else if (res.result == 'server_side_error') {
+            throw new Error()
         }
     }
-    catch (error) {
+    catch {
         await Swal.fire({
             icon: 'error',
-            title: '오류',
-            html: error.message,
+            html: '알 수 없는 오류가 발생 하였습니다.',
             confirmButtonText: '확인',
         })
     }
@@ -414,23 +414,15 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             })
 
             if (res.result == 'error') {
-                throw new Error(res.message)
-            }
-            else if (res.result == 'warning') {
-                await Swal.fire({
-                    icon: 'warning',
-                    html: res.message,
-                    confirmButtonText: '확인',
-                })
+                await showWarning(res.reason)
                 return
+            }
+            else if (res.result == 'server_side_error') {
+                throw new Error()
             }
 
             if (res.tracks.length < 9) {
-                await Swal.fire({
-                    icon: 'warning',
-                    html: '트랙 수가 밴픽을 진행하기에 부족합니다.',
-                    confirmButtonText: '확인',
-                })
+                await showWarning('트랙 수가 밴픽을 진행하기에 부족합니다.')
                 return
             }
 
@@ -455,13 +447,8 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 banpickAmount = res.value
             }
         }
-        catch (error) {
-            await Swal.fire({
-                icon: 'error',
-                title: '오류',
-                html: error.message,
-                confirmButtonText: '확인',
-            })
+        catch {
+
         }
 
         if (banpickAmount) {
@@ -481,15 +468,11 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 })
 
                 if (res.result == 'error') {
-                    throw new Error(res.message)
-                }
-                else if (res.result == 'warning') {
-                    await Swal.fire({
-                        icon: 'warning',
-                        html: res.message,
-                        confirmButtonText: '확인',
-                    })
+                    await showWarning(res.reason)
                     return
+                }
+                else if (res.result == 'server_side_error') {
+                    throw new Error()
                 }
 
                 const gameId = res.game_id
@@ -508,11 +491,10 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                     await navigator.clipboard.writeText(gameId)
                 }
             }
-            catch (error) {
+            catch {
                 await Swal.fire({
                     icon: 'error',
-                    title: '오류',
-                    html: error.message,
+                    html: '알 수 없는 오류가 발생 하였습니다.',
                     confirmButtonText: '확인',
                 })
             }
@@ -526,7 +508,12 @@ try {
     let res = await postAsync('/user')
 
     if (res.result == 'error') {
-        throw new Error(res.error)
+        await showWarningWithOption(res.reason)
+        throw new Error()
+    }
+    else if (res.result == 'server_side_error') {
+        await showErrorWithOption()
+        throw new Error()
     }
 
     document.querySelector('.name').textContent = res.user.name
@@ -570,7 +557,12 @@ try {
     res = await postAsync('/notification')
 
     if (res.result == 'error') {
-        throw new Error(res.error)
+        await showWarningWithOption(res.reason)
+        throw new Error()
+    }
+    else if (res.result == 'server_side_error') {
+        await showErrorWithOption()
+        throw new Error()
     }
 
     for (const notification of res.notification) {
@@ -588,14 +580,15 @@ try {
             const res = await postAsync('/notification/hide', { notification_id: notification.id })
 
             if (res.result == 'error') {
-                throw new Error(res.error)
+                await showWarning(res.reason)
+            }
+            else if (res.result == 'server_side_error') {
+                throw new Error()
             }
         }
     }
 }
-catch (error) {
-    await showError(error)
-}
+catch { }
 
 function postAsync(url, params = {}) {
     return new Promise((resolve, reject) => {
@@ -611,11 +604,45 @@ function postAsync(url, params = {}) {
     })
 }
 
-async function showError(error) {
+async function showWarning(reason) {
+    await Swal.fire({
+        icon: 'warning',
+        html: reason,
+        confirmButtonText: '확인',
+    })
+}
+
+async function showWarningWithOption(reason) {
+    const res = await Swal.fire({
+        icon: 'warning',
+        html: reason,
+        showCancelButton: true,
+        confirmButtonText: '새로고침',
+        cancelButtonText: '로그아웃',
+        showOutsideClick: false,
+    })
+
+    if (res.isConfirmed) {
+        location.reload()
+    }
+    else {
+        await fetch('/signout')
+        location.reload()
+    }
+}
+
+async function showError() {
+    await Swal.fire({
+        icon: 'error',
+        html: '알 수 없는 오류가 발생 하였습니다.',
+        confirmButtonText: '확인',
+    })
+}
+
+async function showErrorWithOption() {
     const res = await Swal.fire({
         icon: 'error',
-        title: '오류',
-        html: error.message,
+        html: '알 수 없는 오류가 발생 하였습니다.',
         showCancelButton: true,
         confirmButtonText: '새로고침',
         cancelButtonText: '로그아웃',

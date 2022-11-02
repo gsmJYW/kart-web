@@ -4,6 +4,31 @@ let interval
 
 try {
     const eventSource = new EventSource('/game/event?path=banpick')
+
+    eventSource.addEventListener('error', async (e) => {
+        eventSource.close()
+
+        await Swal.fire({
+            icon: 'warning',
+            html: e.data.toString(),
+            confirmButtonText: '홈으로',
+        })
+
+        location.href = '/'
+    })
+
+    eventSource.addEventListener('server_side_error', async () => {
+        eventSource.close()
+
+        await Swal.fire({
+            icon: 'error',
+            html: '알 수 없는 오류가 발생 하였습니다.',
+            confirmButtonText: '새로고침',
+        })
+
+        location.reload()
+    })
+
     eventSource.addEventListener('game_update', async (e) => {
         Swal.close()
 
@@ -92,23 +117,14 @@ try {
                     const res = await postAsync('/banpick/random')
 
                     if (res.result == 'error') {
-                        throw new Error(res.message)
+                        await showWarning(res.reason)
                     }
-                    else if (res.result == 'warning') {
-                        await Swal.fire({
-                            icon: 'warning',
-                            html: res.message,
-                            confirmButtonText: '확인',
-                        })
+                    else if (res.result == 'server_side_error') {
+                        throw new Error()
                     }
                 }
-                catch (error) {
-                    await Swal.fire({
-                        icon: 'error',
-                        title: '오류',
-                        html: error.message,
-                        confirmButtonText: '확인',
-                    })
+                catch {
+                    await showError()
                 }
             }
 
@@ -187,33 +203,23 @@ try {
                     const res = await postAsync('/banpick', { track_id: track.id })
 
                     if (res.result == 'error') {
-                        throw new Error(res.message)
+                        await showWarning(res.reason)
                     }
-                    else if (res.result == 'warning') {
-                        await Swal.fire({
-                            icon: 'warning',
-                            html: res.message,
-                            confirmButtonText: '확인',
-                        })
+                    else if (res.result == 'server_side_error') {
+                        throw new Error()
                     }
                 }
-                catch (error) {
-                    await Swal.fire({
-                        icon: 'error',
-                        title: '오류',
-                        html: error.message,
-                        confirmButtonText: '확인',
-                    })
+                catch {
+                    await showError()
                 }
             }
         }
     })
 }
-catch (error) {
+catch {
     await Swal.fire({
         icon: 'error',
-        title: '오류',
-        html: error.message,
+        html: '알 수 없는 오류가 발생 하였습니다.',
         confirmButtonText: '새로고침',
     })
 
@@ -242,5 +248,21 @@ function postAsync(url, params = {}) {
         }).then(async (res) => {
             resolve(await res.json())
         }).catch((error) => reject(error))
+    })
+}
+
+async function showWarning(reason) {
+    await Swal.fire({
+        icon: 'warning',
+        html: reason,
+        confirmButtonText: '확인',
+    })
+}
+
+async function showError() {
+    await Swal.fire({
+        icon: 'error',
+        html: '알 수 없는 오류가 발생 하였습니다.',
+        confirmButtonText: '확인',
     })
 }

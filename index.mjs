@@ -92,7 +92,7 @@ app.get('/', async (req, res) => {
       res.sendFile(__dirname + '/views/signup.html')
     }
   }
-  catch (error) {
+  catch {
     res.sendFile(__dirname + '/views/signin.html')
   }
 })
@@ -100,18 +100,21 @@ app.get('/', async (req, res) => {
 app.post('/timestamp', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.'
+      })
+      return
     }
 
     res.json({
-      result: 'OK',
+      result: 'ok',
       timestamp: Math.floor(new Date().getTime() / 1000),
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -119,7 +122,41 @@ app.post('/timestamp', async (req, res) => {
 app.post('/signup', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.'
+      })
+      return
+    }
+
+    if (!req.body.rider_name) {
+      res.json({
+        result: 'error',
+        reason: '라이더명이 제공되지 않았습니다.'
+      })
+      return
+    }
+    else if (!/[A-Za-z0-9가-힣]/g.test(req.body.rider_name)) {
+      res.json({
+        result: 'error',
+        reason: '라이더명은 영문, 한글, 숫자만 포함할 수 있습니다.',
+      })
+      return
+    }
+    else {
+      let byte = 0
+
+      for (let i = 0; i < req.body.rider_name.length; i++) {
+        req.body.rider_name.charCodeAt(i) > 127 ? byte += 2 : byte++
+      }
+
+      if (byte < 4 || byte > 12) {
+        res.json({
+          result: 'error',
+          reason: '라이더명은 영문 및 숫자 기준 4 ~ 12자, <br> 한글 기준 2 ~ 6자여야 합니다.',
+        })
+        return
+      }
     }
 
     const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/nickname/${req.body.rider_name}`, {
@@ -132,8 +169,8 @@ app.post('/signup', async (req, res) => {
 
     if (!rider.accessId) {
       res.json({
-        result: 'warning',
-        message: '라이더를 찾지 못했습니다.',
+        result: 'error',
+        reason: '라이더를 찾지 못했습니다.',
       })
       return
     }
@@ -144,13 +181,12 @@ app.post('/signup', async (req, res) => {
     await pool.query(`INSERT INTO user (id, name, discriminator, avatar, rider_id) VALUES (${user.id}, '${user.username}', ${user.discriminator}, ${user.avatar ? `'${user.avatar}'` : 'NULL'}, '${rider.accessId}')`)
 
     res.json({
-      result: 'OK',
+      result: 'ok',
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -158,20 +194,23 @@ app.post('/signup', async (req, res) => {
 app.post('/user', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
     const user = (await pool.query(`SELECT CAST(id AS CHAR) AS id, name, discriminator, avatar FROM user WHERE id = ${decrypt(req.session.user_id)}`))[0][0]
 
     res.json({
-      result: 'OK',
+      result: 'ok',
       user: user,
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -179,20 +218,23 @@ app.post('/user', async (req, res) => {
 app.post('/notification', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
     const notificationList = (await pool.query(`SELECT * FROM notification WHERE id NOT IN (SELECT notification_id FROM hide_notification WHERE user_id = ${decrypt(req.session.user_id)}) ORDER BY created_at`))[0]
 
     res.json({
-      result: 'OK',
+      result: 'ok',
       notification: notificationList,
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -200,39 +242,56 @@ app.post('/notification', async (req, res) => {
 app.post('/notification/hide', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
+    }
+
+    if (!(Number(req.body.notification_id) > 0) || !(Number(req.body.notification_id) < Math.pow(2, 32) - 1)) {
+      res.json({
+        result: 'error',
+        reason: '알림 id가 제공되지 않았거나 잘못된 타입입니다.',
+      })
+      return
     }
 
     await pool.query(`INSERT INTO hide_notification (user_id, notification_id) VALUES (${decrypt(req.session.user_id)}, ${req.body.notification_id})`)
 
     res.json({
-      result: 'OK',
+      result: 'ok',
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
 
 app.get('/discord/oauth', async (req, res) => {
   try {
-    const code = req.query.code
-
-    if (!code) {
-      throw new Error('Discord OAuth2 인증 코드가 제공되지 않았습니다.')
+    if (!req.query.code) {
+      res.json({
+        result: 'error',
+        reason: 'Discord OAuth2 인증 코드가 제공되지 않았습니다.',
+      })
+      return
     }
 
     let resp = await oauth.tokenRequest({
-      code: code,
+      code: req.query.code,
       scope: 'identify',
       grantType: 'authorization_code',
     })
 
     if (!resp.access_token) {
-      throw new Error('잘못된 Discord OAuth2 인증 코드입니다.')
+      res.json({
+        result: 'error',
+        reason: '잘못된 Discord OAuth2 인증 코드입니다.',
+      })
+      return
     }
 
     const encryptedToken = encrypt(resp.access_token)
@@ -252,7 +311,19 @@ app.get('/discord/oauth', async (req, res) => {
 app.post('/rider/name', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
+    }
+
+    if (!(Number(req.body.rider_id) > 0) || !(Number(req.body.rider_id) < Math.pow(2, 32) - 1)) {
+      res.json({
+        result: 'error',
+        reason: '라이더 id가 제공되지 않았거나 잘못된 타입입니다.',
+      })
+      return
     }
 
     const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/${req.body.rider_id}`, {
@@ -265,21 +336,20 @@ app.post('/rider/name', async (req, res) => {
 
     if (!rider.name) {
       res.json({
-        result: 'warning',
-        message: '라이더를 찾지 못했습니다.',
+        result: 'error',
+        reason: '라이더를 찾지 못했습니다.',
       })
       return
     }
 
     res.json({
-      result: 'OK',
+      result: 'ok',
       rider_name: rider.name,
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -287,7 +357,41 @@ app.post('/rider/name', async (req, res) => {
 app.post('/rider/name/update', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
+    }
+
+    if (!req.body.rider_name) {
+      res.json({
+        result: 'error',
+        reason: '라이더명이 제공되지 않았습니다.'
+      })
+      return
+    }
+    else if (!/[A-Za-z0-9가-힣]/g.test(req.body.rider_name)) {
+      res.json({
+        result: 'error',
+        reason: '라이더명은 영문, 한글, 숫자만 포함할 수 있습니다.',
+      })
+      return
+    }
+    else {
+      let byte = 0
+
+      for (let i = 0; i < str.length; i++) {
+        str.charCodeAt(i) > 127 ? byte += 2 : byte++
+      }
+
+      if (byte < 4 || byte > 12) {
+        res.json({
+          result: 'error',
+          reason: '라이더명은 영문 및 숫자 기준 4-12자, 한글 기준 2-6자여야 합니다.',
+        })
+        return
+      }
     }
 
     const result = await fetch(`https://api.nexon.co.kr/kart/v1.0/users/nickname/${req.body.rider_name}`, {
@@ -300,8 +404,8 @@ app.post('/rider/name/update', async (req, res) => {
 
     if (!rider.accessId) {
       res.json({
-        result: 'warning',
-        message: '라이더를 찾지 못했습니다.',
+        result: 'error',
+        reason: '라이더를 찾지 못했습니다.',
       })
       return
     }
@@ -309,13 +413,12 @@ app.post('/rider/name/update', async (req, res) => {
     await pool.query(`UPDATE user SET rider_id = ${rider.accessId} WHERE id = ${decrypt(req.session.user_id)}`)
 
     res.json({
-      result: 'OK',
+      result: 'ok',
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -331,56 +434,63 @@ app.get('/signout', async (req, res) => {
 app.post('/tracks', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
-    const trackList = await getTrackList(req.body.channel, req.body.track_type)
+    const result = await getTrackList(req.body.channel, req.body.track_type)
+
+    if (result.result == 'error') {
+      res.json({
+        result: 'error',
+        reason: result.reason,
+      })
+      return
+    }
 
     res.json({
-      result: 'OK',
-      tracks: trackList,
+      result: 'ok',
+      tracks: result.trackList,
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
 
 app.get('/banpick', async (req, res) => {
-  try {
-    if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
-    }
-
-    const userId = decrypt(req.session.user_id)
-    const game = (await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND banpick_started_at IS NOT NULL AND closed_at IS NULL`))[0][0]
-
-    if (!game) {
-      throw new Error()
-    }
-
-    res.sendFile(__dirname + '/views/banpick.html')
-  }
-  catch (error) {
-    res.redirect('/')
-  }
+  res.sendFile(__dirname + '/views/banpick.html')
 })
 
 let gameEventList = []
 
 app.get('/game/event', async (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  })
+
+  res.flushHeaders()
+
+  if (!req.session.access_token) {
+    res.write(`event: error\ndata: 로그인이 필요한 기능입니다.\n\n`)
+    res.end()
+    return
+  }
+
+  if (!['lobby', 'banpick', 'round'].some((element) => element == req.query.path)) {
+    res.write(`event: error\ndata: 비정상적인 경로입니다.\n\n`)
+    res.end()
+    return
+  }
+
   try {
-    if (!['lobby', 'banpick', 'round'].some((element) => element == req.query.path)) {
-      throw new Error('unknown path')
-    }
-
-    if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
-    }
-
     const userId = decrypt(req.session.user_id)
 
     const gameEvent = {
@@ -390,13 +500,6 @@ app.get('/game/event', async (req, res) => {
       res: res,
     }
 
-    res.set({
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    })
-
-    res.flushHeaders()
     gameEventList.push(gameEvent)
 
     await sendGameEvent([req.query.path], { eventId: req.id })
@@ -406,7 +509,9 @@ app.get('/game/event', async (req, res) => {
       res.end()
     })
   }
-  catch { }
+  catch {
+    res.write(`event: server_side_error\n\n`)
+  }
 })
 
 app.post('/game/create', async (req, res) => {
@@ -426,8 +531,8 @@ app.post('/game/create', async (req, res) => {
 
     if (game) {
       res.json({
-        result: 'warning',
-        message: '이미 대기 중이거나 진행 중인 게임이 있습니다.',
+        result: 'error',
+        reason: '이미 대기 중이거나 진행 중인 게임이 있습니다.',
       })
       return
     }
@@ -443,14 +548,13 @@ app.post('/game/create', async (req, res) => {
     await sendGameEvent(['lobby'], { userId: userId })
 
     res.json({
-      result: 'OK',
+      result: 'ok',
       game_id: gameId,
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -464,8 +568,8 @@ app.post('/game/join', async (req, res) => {
 
     if (game) {
       res.json({
-        result: 'warning',
-        message: '이미 대기 중이거나 진행 중인 게임이 있습니다.',
+        result: 'error',
+        reason: '이미 대기 중이거나 진행 중인 게임이 있습니다.',
       })
       return
     }
@@ -474,15 +578,15 @@ app.post('/game/join', async (req, res) => {
 
     if (!game) {
       res.json({
-        result: 'warning',
-        message: '게임을 찾지 못했습니다.',
+        result: 'error',
+        reason: '게임을 찾지 못했습니다.',
       })
       return
     }
     else if (game.banpick_started_at) {
       res.json({
-        result: 'warning',
-        message: '만료된 초대 코드입니다.',
+        result: 'error',
+        reason: '만료된 초대 코드입니다.',
       })
       return
     }
@@ -491,7 +595,11 @@ app.post('/game/join', async (req, res) => {
     const riderId = user.rider_id
 
     if (game.host_rider_id == riderId) {
-      throw new Error('호스트와 라이더명이 같습니다. <br> 라이더명을 변경해주세요.')
+      res.json({
+        result: 'error',
+        reason: '호스트와 라이더명이 같습니다. <br> 라이더명을 변경해주세요.',
+      })
+      return
     }
 
     const trackList = await getTrackList(game.channel, game.track_type, game.banpick_amount)
@@ -514,13 +622,12 @@ app.post('/game/join', async (req, res) => {
     await sendGameEvent(['lobby'], { gameId: gameId })
 
     res.json({
-      result: 'OK',
+      result: 'ok',
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -528,7 +635,11 @@ app.post('/game/join', async (req, res) => {
 app.post('/game/close', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
     const userId = decrypt(req.session.user_id)
@@ -536,8 +647,8 @@ app.post('/game/close', async (req, res) => {
 
     if (!result.affectedRows) {
       res.json({
-        result: 'warning',
-        message: '대기 중인 게임이 없거나 이미 시작 되었습니다.',
+        result: 'error',
+        reason: '대기 중인 게임이 없거나 이미 시작 되었습니다.',
       })
       return
     }
@@ -545,13 +656,12 @@ app.post('/game/close', async (req, res) => {
     await sendGameEvent(['lobby'], { userId: userId, isThereGame: false })
 
     res.json({
-      result: 'OK',
+      result: 'ok',
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -559,7 +669,11 @@ app.post('/game/close', async (req, res) => {
 app.post('/game/quit', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
     const userId = decrypt(req.session.user_id)
@@ -567,8 +681,8 @@ app.post('/game/quit', async (req, res) => {
 
     if (!game) {
       res.json({
-        result: 'warning',
-        message: '진행 중인 게임이 없습니다.',
+        result: 'error',
+        reason: '진행 중인 게임이 없습니다.',
       })
       return
     }
@@ -587,13 +701,12 @@ app.post('/game/quit', async (req, res) => {
     await setRoundTimer(game.id, 8)
 
     res.json({
-      result: 'OK',
+      result: 'ok',
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -605,7 +718,11 @@ app.get('/images/tracks/:track', async (req, res) => {
 app.post('/banpick', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
     const userId = decrypt(req.session.user_id)
@@ -615,8 +732,8 @@ app.post('/banpick', async (req, res) => {
 
     if (!game) {
       res.json({
-        result: 'warning',
-        message: '진행 중인 밴픽이 없습니다.',
+        result: 'error',
+        reason: '진행 중인 밴픽이 없습니다.',
       })
       return
     }
@@ -625,8 +742,8 @@ app.post('/banpick', async (req, res) => {
 
     if (!banpickList[0]) {
       res.json({
-        result: 'warning',
-        message: '진행 중인 밴픽이 없습니다.',
+        result: 'error',
+        reason: '진행 중인 밴픽이 없습니다.',
       })
       return
     }
@@ -636,8 +753,8 @@ app.post('/banpick', async (req, res) => {
 
     if ((turn.host && userId != game.host_id) || (!turn.host && userId != game.opponent_id)) {
       res.json({
-        result: 'warning',
-        message: '현재 차례가 아닙니다.',
+        result: 'error',
+        reason: '현재 차례가 아닙니다.',
       })
       return
     }
@@ -646,8 +763,8 @@ app.post('/banpick', async (req, res) => {
 
     if (!banpick) {
       res.json({
-        result: 'warning',
-        message: '밴픽 트랙이 아니거나 이미 선정된 트랙입니다.',
+        result: 'error',
+        reason: '밴픽 트랙이 아니거나 이미 선정된 트랙입니다.',
       })
       return
     }
@@ -661,13 +778,12 @@ app.post('/banpick', async (req, res) => {
     await setBanpickTimer(game.id, order + 1)
 
     res.json({
-      result: 'OK'
+      result: 'ok'
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -675,7 +791,11 @@ app.post('/banpick', async (req, res) => {
 app.post('/banpick/random', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
     const userId = decrypt(req.session.user_id)
@@ -683,8 +803,8 @@ app.post('/banpick/random', async (req, res) => {
 
     if (!game) {
       res.json({
-        result: 'warning',
-        message: '진행 중인 밴픽이 없습니다.',
+        result: 'error',
+        reason: '진행 중인 밴픽이 없습니다.',
       })
       return
     }
@@ -693,8 +813,8 @@ app.post('/banpick/random', async (req, res) => {
 
     if (!banpickList[0]) {
       res.json({
-        result: 'warning',
-        message: '진행 중인 밴픽이 없습니다.',
+        result: 'error',
+        reason: '진행 중인 밴픽이 없습니다.',
       })
       return
     }
@@ -704,8 +824,8 @@ app.post('/banpick/random', async (req, res) => {
 
     if ((turn.host && userId != game.host_id) || (!turn.host && userId != game.opponent_id)) {
       res.json({
-        result: 'warning',
-        message: '현재 차례가 아닙니다.',
+        result: 'error',
+        reason: '현재 차례가 아닙니다.',
       })
       return
     }
@@ -719,41 +839,28 @@ app.post('/banpick/random', async (req, res) => {
     await setBanpickTimer(game.id, order + 1)
 
     res.json({
-      result: 'OK'
+      result: 'ok'
     })
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
 
 app.get('/round', async (req, res) => {
-  try {
-    if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
-    }
-
-    const userId = decrypt(req.session.user_id)
-    const game = (await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND round_started_at IS NOT NULL AND closed_at IS NULL`))[0][0]
-
-    if (!game) {
-      throw new Error()
-    }
-
-    res.sendFile(__dirname + '/views/round.html')
-  }
-  catch (error) {
-    res.redirect('/')
-  }
+  res.sendFile(__dirname + '/views/round.html')
 })
 
 app.post('/round/skip', async (req, res) => {
   try {
     if (!req.session.access_token) {
-      throw new Error('인증되지 않은 요청입니다.')
+      res.json({
+        result: 'error',
+        reason: '로그인이 필요한 기능입니다.',
+      })
+      return
     }
 
     const userId = decrypt(req.session.user_id)
@@ -761,8 +868,8 @@ app.post('/round/skip', async (req, res) => {
 
     if (!round) {
       res.json({
-        result: 'warning',
-        message: '진행 중인 라운드가 없습니다.',
+        result: 'error',
+        reason: '진행 중인 라운드가 없습니다.',
       })
       return
     }
@@ -778,8 +885,8 @@ app.post('/round/skip', async (req, res) => {
 
     if (round[ready]) {
       res.json({
-        result: 'warning',
-        message: '이미 라운드 스킵을 요청 하셨습니다.',
+        result: 'error',
+        reason: '이미 라운드 스킵을 요청 하셨습니다.',
       })
       return
     }
@@ -796,7 +903,7 @@ app.post('/round/skip', async (req, res) => {
       await setRoundTimer(round.game_id, round.number + 1)
 
       res.json({
-        result: 'OK',
+        result: 'ok',
       })
     }
     else {
@@ -807,10 +914,9 @@ app.post('/round/skip', async (req, res) => {
       })
     }
   }
-  catch (error) {
+  catch {
     res.json({
-      result: 'error',
-      message: error.message,
+      result: 'server_side_error',
     })
   }
 })
@@ -828,40 +934,48 @@ async function sendGameEvent(path, args = { eventId: null, userId: null, gameId:
     args.isThereGame = true
   }
 
-  const data = {}
-
-  let game
   let gameEvent
+  let dataString
 
-  if (args.userId && args.isThereGame) {
-    game = (await pool.query(`SELECT * FROM game WHERE '${args.userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
-  }
-  else if (args.gameId) {
-    game = (await pool.query(`SELECT * FROM game WHERE id = '${args.gameId}'`))[0][0]
-  }
-  else if (args.eventId) {
-    gameEvent = gameEventList.find((gameEvent) => gameEvent.id == args.eventId)
-    game = (await pool.query(`SELECT * FROM game WHERE '${gameEvent.userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
-  }
-  else if (args.isThereGame) {
-    throw new Error(`illegal args combination`)
-  }
+  try {
+    let game
+    const data = {}
 
-  if (game) {
-    data.game = game
-
-    if (game.banpick_started_at) {
-      data.banpick = (await pool.query(`SELECT b.*, t.name AS track_name FROM banpick AS b INNER JOIN track AS t WHERE b.track_id = t.id AND game_id = '${game.id}'`))[0]
+    if (args.userId && args.isThereGame) {
+      game = (await pool.query(`SELECT * FROM game WHERE '${args.userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
+    }
+    else if (args.gameId) {
+      game = (await pool.query(`SELECT * FROM game WHERE id = '${args.gameId}'`))[0][0]
+    }
+    else if (args.eventId) {
+      gameEvent = gameEventList.find((gameEvent) => gameEvent.id == args.eventId)
+      game = (await pool.query(`SELECT * FROM game WHERE '${gameEvent.userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
+    }
+    else if (args.isThereGame) {
+      throw new Error(`잘못된 args 조합입니다.`)
     }
 
-    if (game.round_started_at) {
-      data.round = (await pool.query(`SELECT r.*, b.track_id, t.name AS track_name FROM round AS r INNER JOIN banpick AS b INNER JOIN track as t WHERE r.game_id = b.game_id AND r.number = b.round AND b.track_id = t.id AND r.game_id='${game.id}'`))[0]
+    if (game) {
+      data.game = game
+
+      if (game.banpick_started_at) {
+        data.banpick = (await pool.query(`SELECT b.*, t.name AS track_name FROM banpick AS b INNER JOIN track AS t WHERE b.track_id = t.id AND game_id = '${game.id}'`))[0]
+      }
+
+      if (game.round_started_at) {
+        data.round = (await pool.query(`SELECT r.*, b.track_id, t.name AS track_name FROM round AS r INNER JOIN banpick AS b INNER JOIN track as t WHERE r.game_id = b.game_id AND r.number = b.round AND b.track_id = t.id AND r.game_id='${game.id}'`))[0]
+      }
     }
+
+    dataString = `event: game_update\ndata: ${JSON.stringify(data)}\n\n`
+  }
+  catch {
+    dataString = `event: server_side_error\n\n`
   }
 
   if (gameEvent) {
     data.user_id = gameEvent.userId
-    gameEvent.res.write(`event: game_update\ndata: ${JSON.stringify(data)}\n\n`)
+    gameEvent.res.write(dataString)
   }
   else {
     let tempGameEventList
@@ -882,7 +996,10 @@ async function sendGameEvent(path, args = { eventId: null, userId: null, gameId:
 
 async function getTrackList(channel, trackType, amount = NaN) {
   if (!channel || !trackType) {
-    throw new Error('parameters required')
+    return ({
+      result: 'error',
+      reason: '채널이나 트랙 타입이 제공되지 않았습니다.',
+    })
   }
 
   let mode
@@ -894,18 +1011,27 @@ async function getTrackList(channel, trackType, amount = NaN) {
     mode = 'item'
   }
   else {
-    throw new Error('invalid match type')
+    return ({
+      result: 'error',
+      reason: '채널이 알맞지 않습니다.',
+    })
   }
 
   if (!['very_easy', 'easy', 'normal', 'hard', 'very_hard', 'all', 'league', 'new', 'reverse', 'crazy'].some((element) => trackType == element)) {
-    throw new Error('invalid trackType')
+    return ({
+      result: 'error',
+      reason: '트랙 타입이 알맞지 않습니다.',
+    })
   }
 
   const conditionList = []
 
   if (mode == 'speed') {
     if (trackType == 'crazy') {
-      throw new Error('speed mode is not available on crazy random')
+      return ({
+        result: 'error',
+        reason: '스피드전에서 크레이지 트랙을 사용할 수 없습니다.',
+      })
     }
 
     conditionList.push('crazy = false')
@@ -928,7 +1054,11 @@ async function getTrackList(channel, trackType, amount = NaN) {
   }
 
   const trackList = (await pool.query(query))[0]
-  return trackList
+
+  return ({
+    result: 'ok',
+    trackList: trackList,
+  })
 }
 
 function getBanpickTurn(order) {

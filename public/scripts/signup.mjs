@@ -9,32 +9,23 @@ const res = await Swal.fire({
     allowOutsideClick: false,
 })
 
-const riderName = res.value.trim()
-
 if (res.isConfirmed) {
+    const riderName = res.value.trim()
+
     try {
         const res = await postAsync('/signup', {
             rider_name: riderName,
         })
 
         if (res.result == 'error') {
-            throw new Error(res.message)
+            await showWarning(res.reason)
         }
-        else if (res.result == 'warning') {
-            await Swal.fire({
-                icon: 'warning',
-                html: res.message,
-                confirmButtonText: '확인',
-            })
+        else if (res.result == 'server_side_error') {
+            throw new Error()
         }
     }
-    catch (error) {
-        await Swal.fire({
-            icon: 'error',
-            title: '오류',
-            html: error.message,
-            confirmButtonText: '확인',
-        })
+    catch {
+        await showError()
     }
 }
 else {
@@ -57,3 +48,18 @@ function postAsync(url, params = {}) {
     })
 }
 
+async function showWarning(reason) {
+    await Swal.fire({
+        icon: 'warning',
+        html: reason,
+        confirmButtonText: '확인',
+    })
+}
+
+async function showError() {
+    await Swal.fire({
+        icon: 'error',
+        html: '알 수 없는 오류가 발생 하였습니다.',
+        confirmButtonText: '확인',
+    })
+}
