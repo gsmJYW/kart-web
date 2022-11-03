@@ -36,7 +36,7 @@ try {
 
         let res = await postAsync('/rider/name', { rider_id: data.game.host_rider_id })
 
-        if (res.result != 'OK') {
+        if (res.result != 'ok') {
             throw new Error(res.error)
         }
 
@@ -44,7 +44,7 @@ try {
 
         res = await postAsync('/rider/name', { rider_id: data.game.opponent_rider_id })
 
-        if (res.result != 'OK') {
+        if (res.result != 'ok') {
             throw new Error(res.error)
         }
 
