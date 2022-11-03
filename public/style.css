@@ -2,6 +2,12 @@
 
 * {
     font-family: 'Nanum Gothic', serif;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .bg {
@@ -255,12 +261,6 @@ div.bg {
     margin: auto;
     padding-left: 1vmin;
     padding-right: 1.5vmin;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
 }
 
 .api-sign {
