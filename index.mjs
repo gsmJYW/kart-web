@@ -934,12 +934,13 @@ async function sendGameEvent(path, args = { eventId: null, userId: null, gameId:
     args.isThereGame = true
   }
 
+  let game
   let gameEvent
-  let dataString
+  let event
+
+  const data = {}
 
   try {
-    let game
-    const data = {}
 
     if (args.userId && args.isThereGame) {
       game = (await pool.query(`SELECT * FROM game WHERE '${args.userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
@@ -967,15 +968,15 @@ async function sendGameEvent(path, args = { eventId: null, userId: null, gameId:
       }
     }
 
-    dataString = `event: game_update\ndata: ${JSON.stringify(data)}\n\n`
+    event = 'game_update';
   }
   catch {
-    dataString = `event: server_side_error\n\n`
+    dataString = 'server_side_error'
   }
 
   if (gameEvent) {
     data.user_id = gameEvent.userId
-    gameEvent.res.write(dataString)
+    gameEvent.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
   }
   else {
     let tempGameEventList
@@ -989,7 +990,7 @@ async function sendGameEvent(path, args = { eventId: null, userId: null, gameId:
 
     for (const gameEvent of tempGameEventList) {
       data.user_id = gameEvent.userId
-      gameEvent.res.write(`event: game_update\ndata: ${JSON.stringify(data)}\n\n`)
+      gameEvent.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
     }
   }
 }
