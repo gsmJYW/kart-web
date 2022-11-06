@@ -12,6 +12,7 @@ import Crypto from 'crypto'
 import session from 'express-session'
 import mysqlSession from 'express-mysql-session'
 import fetch from 'node-fetch'
+import { Client, GatewayIntentBits } from 'discord.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -19,7 +20,7 @@ const __dirname = dirname(__filename)
 const args = process.argv.slice(2)
 
 if (args.length < 6) {
-  console.error('Parameters not provided: [mysql_host] [mysql_user] [mysql_password] [mysql_database] [session_secret] [discord_oauth_client_secret] [discord_oauth_redirect_uri] [kart_api_key]')
+  console.error('Parameters not provided: [mysql_host] [mysql_user] [mysql_password] [mysql_database] [session_secret] [discord_oauth_client_secret] [discord_oauth_redirect_uri] [discord_bot_token] [kart_api_key]')
   process.exit(1)
 }
 
@@ -61,9 +62,33 @@ const oauth = new DiscordOauth2({
   redirectUri: args[6],
 })
 
-const kartApiKey = args[7]
+const kartApiKey = args[8]
 
 app.use((req, res, next) => {
+  if (!req.session.first_request_at || !req.session.request_amount) {
+    req.session.first_request_at = new Date().getTime()
+    req.session.request_amount = 0
+  }
+  else {
+    if (new Date().getTime() - req.session.first_request_at > 1000) {
+      req.session.first_request_at = new Date().getTime()
+    }
+    else {
+      if (req.session.request_amount >= 10) {
+        res.json({
+          result: 'error',
+          reason: '너무 요청이 많아요! <br> 1초에 10번까지만 요청하실 수 있습니다.'
+        })
+        return
+      }
+      else {
+        req.session.request_amount++
+      }
+    }
+  }
+
+  req.session.save()
+
   const protocol = req.headers['x-forwarded-proto'] || req.protocol
   if (protocol == 'https') {
     next()
@@ -112,10 +137,12 @@ app.post('/timestamp', async (req, res) => {
       timestamp: Math.floor(new Date().getTime() / 1000),
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -184,10 +211,12 @@ app.post('/signup', async (req, res) => {
       result: 'ok',
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -208,10 +237,12 @@ app.post('/user', async (req, res) => {
       user: user,
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -232,10 +263,12 @@ app.post('/notification', async (req, res) => {
       notification: notificationList,
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -263,10 +296,12 @@ app.post('/notification/hide', async (req, res) => {
       result: 'ok',
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -347,10 +382,12 @@ app.post('/rider/name', async (req, res) => {
       rider_name: rider.name,
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -381,8 +418,8 @@ app.post('/rider/name/update', async (req, res) => {
     else {
       let byte = 0
 
-      for (let i = 0; i < str.length; i++) {
-        str.charCodeAt(i) > 127 ? byte += 2 : byte++
+      for (let i = 0; i < req.body.rider_name.length; i++) {
+        req.body.rider_name.charCodeAt(i) > 127 ? byte += 2 : byte++
       }
 
       if (byte < 4 || byte > 12) {
@@ -416,10 +453,12 @@ app.post('/rider/name/update', async (req, res) => {
       result: 'ok',
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -456,10 +495,12 @@ app.post('/tracks', async (req, res) => {
       tracks: result.trackList,
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -509,8 +550,9 @@ app.get('/game/event', async (req, res) => {
       res.end()
     })
   }
-  catch {
+  catch (error) {
     res.write(`event: server_side_error\n\n`)
+    await sendError(error)
   }
 })
 
@@ -521,10 +563,22 @@ app.post('/game/create', async (req, res) => {
     const banpickAmount = req.body.banpick_amount
     const userId = decrypt(req.session.user_id)
 
-    const trackList = await getTrackList(channel, trackType)
+    let result = await getTrackList(channel, trackType)
 
-    if (banpickAmount < 9 || banpickAmount > trackList.length) {
-      throw new Error(`banpick amount can't be less than 9 or more than track amount`)
+    if (result.result == 'error') {
+      res.json({
+        result: 'error',
+        reason: result.reason,
+      })
+      return
+    }
+
+    if (banpickAmount < 9 || banpickAmount > result.trackList.length) {
+      res.json({
+        result: 'error',
+        reason: '밴픽 트랙 수는 9 이상이거나 전체 트랙 수 이하여야 합니다.',
+      })
+      return
     }
 
     const game = (await pool.query(`SELECT * FROM game WHERE '${userId}' IN (host_id, opponent_id) AND closed_at IS NULL`))[0][0]
@@ -538,7 +592,7 @@ app.post('/game/create', async (req, res) => {
     }
 
     let gameId
-    let result = { affectedRows: 0 }
+    result = { affectedRows: 0 }
 
     while (!result.affectedRows) {
       gameId = Crypto.randomUUID().slice(0, 6)
@@ -552,10 +606,12 @@ app.post('/game/create', async (req, res) => {
       game_id: gameId,
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -602,10 +658,19 @@ app.post('/game/join', async (req, res) => {
       return
     }
 
-    const trackList = await getTrackList(game.channel, game.track_type, game.banpick_amount)
-    const valueList = [`('${game.id}', '${trackList.pop().id}', 1, true, 1, UNIX_TIMESTAMP())`]
+    const result = await getTrackList(game.channel, game.track_type, game.banpick_amount)
 
-    for (const track of trackList) {
+    if (result.result == 'error') {
+      res.json({
+        result: 'error',
+        reason: result.reason,
+      })
+      return
+    }
+
+    const valueList = [`('${game.id}', '${result.trackList.pop().id}', 1, true, 1, UNIX_TIMESTAMP())`]
+
+    for (const track of result.trackList) {
       valueList.push(`('${game.id}', '${track.id}', NULL, false, NULL, NULL)`)
     }
 
@@ -625,10 +690,12 @@ app.post('/game/join', async (req, res) => {
       result: 'ok',
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -659,10 +726,12 @@ app.post('/game/close', async (req, res) => {
       result: 'ok',
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -704,10 +773,12 @@ app.post('/game/quit', async (req, res) => {
       result: 'ok',
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -781,10 +852,12 @@ app.post('/banpick', async (req, res) => {
       result: 'ok'
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -842,10 +915,12 @@ app.post('/banpick/random', async (req, res) => {
       result: 'ok'
     })
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
 
@@ -914,12 +989,34 @@ app.post('/round/skip', async (req, res) => {
       })
     }
   }
-  catch {
+  catch (error) {
     res.json({
       result: 'server_side_error',
     })
+
+    await sendError(error)
   }
 })
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.DirectMessages,
+  ],
+})
+
+client.login(args[7])
+
+process.on('uncaughtException', async (error) => {
+  await sendError(error)
+})
+
+async function sendError(error) {
+  try {
+    const user = await client.users.fetch('357527814603407371', false)
+    await user.send(`\`\`\`#${error.stack}\`\`\``)
+  }
+  catch { }
+}
 
 function encrypt(str) {
   return Crypto.publicEncrypt(key, Buffer.from(str)).toString('base64')
@@ -968,10 +1065,11 @@ async function sendGameEvent(path, args = { eventId: null, userId: null, gameId:
       }
     }
 
-    event = 'game_update';
+    event = 'game_update'
   }
-  catch {
+  catch (error) {
     dataString = 'server_side_error'
+    sendError(error)
   }
 
   if (gameEvent) {
