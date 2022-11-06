@@ -19,8 +19,8 @@ const __dirname = dirname(__filename)
 
 const args = process.argv.slice(2)
 
-if (args.length < 6) {
-  console.error('Parameters not provided: [mysql_host] [mysql_user] [mysql_password] [mysql_database] [session_secret] [discord_oauth_client_secret] [discord_oauth_redirect_uri] [discord_bot_token] [kart_api_key]')
+if (args.length < 10) {
+  console.error('Parameters not provided: [mysql_host] [mysql_user] [mysql_password] [mysql_database] [session_secret] [discord_oauth_client_secret] [discord_oauth_redirect_uri] [discord_user_id] [discord_bot_token] [kart_api_key]')
   process.exit(1)
 }
 
@@ -62,7 +62,7 @@ const oauth = new DiscordOauth2({
   redirectUri: args[6],
 })
 
-const kartApiKey = args[8]
+const kartApiKey = args[9]
 
 app.use((req, res, next) => {
   if (!req.session.first_request_at || !req.session.request_amount) {
@@ -1004,7 +1004,7 @@ const client = new Client({
   ],
 })
 
-client.login(args[7])
+client.login(args[8])
 
 process.on('uncaughtException', async (error) => {
   await sendError(error)
@@ -1012,8 +1012,8 @@ process.on('uncaughtException', async (error) => {
 
 async function sendError(error) {
   try {
-    const user = await client.users.fetch('357527814603407371', false)
-    await user.send(`\`\`\`#${error.stack}\`\`\``)
+    const user = await client.users.fetch(args[7], false)
+    await user.send(`\`\`\`${error.stack}\`\`\``)
   }
   catch { }
 }
