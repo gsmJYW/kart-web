@@ -136,7 +136,6 @@ try {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
-                allowOutsideClick: false,
             }).then((res) => {
                 if (res.isConfirmed) {
                     location.href = '/'
@@ -202,7 +201,6 @@ try {
                         showCancelButton: true,
                         confirmButtonText: '확인',
                         cancelButtonText: '취소',
-                        allowOutsideClick: false,
                     }).then(async (res) => {
                         if (!res.isConfirmed) {
                             return
@@ -280,7 +278,6 @@ try {
                     showCancelButton: true,
                     confirmButtonText: '확인',
                     cancelButtonText: '취소',
-                    allowOutsideClick: false,
                 })
 
                 if (!res.isConfirmed) {

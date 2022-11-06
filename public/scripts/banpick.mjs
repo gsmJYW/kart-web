@@ -170,7 +170,6 @@ try {
                     showCancelButton: true,
                     confirmButtonText: '확인',
                     cancelButtonText: '취소',
-                    allowOutsideClick: false,
                 })
 
                 if (res.isConfirmed) {
@@ -178,13 +177,12 @@ try {
                 }
             }
             else {
-                const res = await Swal.fire({
+                const res = await Swal.fire({ 
                     title: '게임 시작',
                     html: '게임이 진행 중입니다. <br> 이동 하시겠습니까?',
                     showCancelButton: true,
                     confirmButtonText: '확인',
                     cancelButtonText: '취소',
-                    allowOutsideClick: false,
                 })
 
                 if (res.isConfirmed) {

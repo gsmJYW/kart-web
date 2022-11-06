@@ -27,9 +27,11 @@ try {
 
         const gameStarted = document.querySelector('.game-started')
         const gameWaiting = document.querySelector('.game-waiting')
+        const join = document.querySelector('.join')
 
         gameStarted.hidden = true
         gameWaiting.hidden = true
+        join.disabled = false
 
         if (data.game) {
             if (data.game.closed_at) {
@@ -40,6 +42,7 @@ try {
             return
         }
 
+        join.disabled = true
         let title
 
         if (data.game.channel.includes('speed')) {
@@ -157,7 +160,6 @@ try {
                     showCancelButton: true,
                     confirmButtonText: '복사',
                     cancelButtonText: '닫기',
-                    allowOutsideClick: false,
                 })
 
                 if (res.isConfirmed) {
@@ -196,7 +198,6 @@ try {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
-                allowOutsideClick: false,
             })
 
             if (res.isConfirmed) {
@@ -210,7 +211,6 @@ try {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
-                allowOutsideClick: false,
             })
 
             if (res.isConfirmed) {
@@ -238,7 +238,6 @@ document.querySelector('.change-rider-name').onclick = async () => {
         showCancelButton: true,
         confirmButtonText: '확인',
         cancelButtonText: '취소',
-        allowOutsideClick: false,
     })
 
     if (!res.isConfirmed) {
@@ -280,7 +279,6 @@ document.querySelector('.signout').onclick = async () => {
         showCancelButton: true,
         confirmButtonText: '로그아웃',
         cancelButtonText: '취소',
-        allowOutsideClick: false,
     })
 
     if (!res.isConfirmed) {
@@ -298,7 +296,6 @@ document.querySelector('.join').onclick = async () => {
         showCancelButton: true,
         confirmButtonText: '확인',
         cancelButtonText: '취소',
-        allowOutsideClick: false,
     })
 
     if (!res.isConfirmed) {
@@ -352,7 +349,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
-                allowOutsideClick: false,
             })
 
             if (!res.isConfirmed) {
@@ -373,7 +369,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
             showCancelButton: true,
             confirmButtonText: '확인',
             cancelButtonText: '취소',
-            allowOutsideClick: false,
         })
 
         if (!res.isConfirmed) {
@@ -394,7 +389,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
-                allowOutsideClick: false,
             })
 
             if (!res.isConfirmed) {
@@ -440,7 +434,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 showCancelButton: true,
                 confirmButtonText: '확인',
                 cancelButtonText: '취소',
-                allowOutsideClick: false,
             })
 
             if (res.isConfirmed) {
@@ -456,8 +449,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                 swal.fire({
                     html: '게임을 여는 중입니다.',
                     showConfirmButton: false,
-                    allowOutsideClick: false,
-                    heightAuto: false,
                 })
                 swal.showLoading()
 
@@ -484,7 +475,6 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
                     showCancelButton: true,
                     confirmButtonText: '복사',
                     cancelButtonText: '닫기',
-                    allowOutsideClick: false,
                 })
 
                 if (res.isConfirmed) {
@@ -502,9 +492,12 @@ for (const random of document.querySelectorAll('.track-type-list > img')) {
     }
 }
 
-try {
-    const avatar = document.querySelector('.avatar')
+const dropdown = document.querySelector('.top-right > .dropdown-menu')
+const profile = document.querySelector('.profile')
+const avatar = document.querySelector('.avatar')
+const name = document.querySelector('.name')
 
+try {
     let res = await postAsync('/user')
 
     if (res.result == 'error') {
@@ -516,7 +509,7 @@ try {
         throw new Error()
     }
 
-    document.querySelector('.name').textContent = res.user.name
+    name.textContent = res.user.name
 
     if (res.user.avatar) {
         avatar.src = `https://cdn.discordapp.com/avatars/${res.user.id}/${res.user.avatar}.png?size=2048`
@@ -549,8 +542,7 @@ try {
         avatar.src = `/images/discord/${defaultAvatar}.png`
     }
 
-    document.querySelector('.profile').onclick = () => {
-        const dropdown = document.querySelector('.top-right > .dropdown-menu')
+    profile.onclick = () => {
         dropdown.hidden = !dropdown.hidden
     }
 
@@ -573,7 +565,6 @@ try {
             showCancelButton: true,
             confirmButtonText: '다신 보지 않기',
             cancelButtonText: '확인',
-            allowOutsideClick: false,
         })
 
         if (res.isConfirmed) {
@@ -589,6 +580,14 @@ try {
     }
 }
 catch { }
+
+document.onclick = (e) => {
+    if ([profile, avatar, name].some((element) => e.target == element)) {
+        return
+    }
+
+    dropdown.hidden = true
+}
 
 function postAsync(url, params = {}) {
     return new Promise((resolve, reject) => {
